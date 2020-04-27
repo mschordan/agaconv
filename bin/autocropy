@@ -1,0 +1,55 @@
+#!/bin/bash
+
+##########################################################################
+# autocropy                                                              #
+# (C) Copyright 2019-2020 Markus Schordan                                #
+##########################################################################
+# This program is free software: you can redistribute it and/or modify   #
+# it under the terms of the GNU General Public License as published by   #
+# the Free Software Foundation, either version 3 of the License, or      #
+# (at your option) any later version.                                    #
+#                                                                        #
+# This program is distributed in the hope that it will be useful,        #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of         #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          #
+# GNU General Public License for more details.                           #
+#                                                                        #
+# You should have received a copy of the GNU General Public License      #
+# along with this program.  If not, see <https://www.gnu.org/licenses/>. #
+#                                                                        #
+##########################################################################
+
+if [ "$#" -eq 0 ]; then
+    echo "Automatically crops black border at top and bottom of a video."
+    echo "It plays video for a few seconds to figure out y-size, then"
+    echo "reencodes the video with cropped y-size."
+    echo "Usage: INPUTVIDEO OUTPUTVIDEO"
+    exit
+fi
+
+# exit on any error in script
+set -e
+
+IN_VIDEO=$1
+OUT_VIDEO=$2
+
+if [ -z "$IN_VIDEO" ]
+then
+    echo "Error: No input file provided."
+    exit
+fi
+if [ -z "$OUT_VIDEO" ]
+then
+    echo "Error: No output file provided."
+    exit
+fi
+
+ffplay -ss 00:00:20 -t 1.0 -i "$IN_VIDEO" -vf "cropdetect=24:1:0" -autoexit &> tmp.out.txt
+cropstring=`egrep -o 'crop=[0-9]{1,4}:[0-9]{1,4}:[0-9]{1,4}:[0-9]{1,4}' tmp.out.txt | head -1`
+
+echo "CROP:$cropstring"
+
+ffmpeg -i "$1" -vf "$cropstring" "$2"
+
+echo "Generated cropped video $OUT_VIDEO."
+exit
