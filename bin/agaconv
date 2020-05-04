@@ -34,7 +34,9 @@
 # exit on any error in script
 set -e
 
-agaconvVersion=0.9.5
+agaconvVersion=0.9.5.1
+
+LC_NUMERIC=POSIX
 
 #default valuess
 maxColors=256
@@ -728,7 +730,6 @@ if [[ $conversionTool == "ham_convert" ]]; then
     if [[ $colorMode ==  "ham8" ]]; then
         # workaround1
         hcDiversityOption=
-        echo "INFO: ham8 mode: removing color diversity setting. Not supported for HAM8"
         # check for HAM8 quality mode
         if [ $hcHamQuality -lt 1 ]; then
             echo "Error: ham8 quality setting must be at least 1."
