@@ -34,7 +34,7 @@
 # exit on any error in script
 set -e
 
-agaconvVersion=0.9.5.1
+agaconvVersion=0.9.5.2
 
 LC_NUMERIC=POSIX
 
@@ -49,10 +49,10 @@ frequency=28000
 audioMode=stereo
 width=320 
 height=auto # height is computed based on other parameters
-inputFileName=__nofilename__
-outputFileName=__nofilename__
-audioOutFile=__nofilename__
-tmpDir=__notmppath__
+inputFileName=""
+outputFileName=""
+audioOutFile=""
+tmpDir=""
 
 fixedFrameDigits=4
 firstFrameNumber=0001
@@ -123,7 +123,7 @@ function PrintHelpMessage {
     echo "  [--batch-mode=yes|no] (default: yes for ham_convert, otherwise no)"
     echo "  [--tmp-dir-type=(vp|video_properties)|unique|(fn|file_name)] (default: vp)"
     echo "  [--tmp-dir=TEMPORARYDIR] (default: as defined by tmp-dir-type)"
-    echo "  [--audio-out=AUDIOFILENAME] (default: tmp-INPUTFILENAME/INPUTFILENAME-AUDIOMODE.raw)"
+    echo "  [--audio-out=AUDIOFILENAME] (default: TEMPORARYDIR/INPUTFILENAME-AUDIOMODE.raw)"
     echo "  [--skip-frame-extraction] (reuse previously extracted PNG frames)"
     echo "  [--skip-frame-conversion] (reuse previously converted PNG or IFF frames)"
     echo "  [--no-cleanup] do not remove temporary files"
@@ -195,16 +195,16 @@ function ExtractVideoData {
             fi
             echo "Extracing frames from $inputFileName, resizing, and paletting with ${maxColors} colors using ffmpeg"
             maxColorsCorrected=$(($maxColors-2)) # one for background color, and one for ffmpeg bug
-            FFMPEG_LINE="ffmpeg -i $inputFileName $FFMPEG_QUIET_OPTIONS -filter_complex \"[0:v] fps=${framesPerSecond},scale=w=${outputVideoWidth}:h=${outputVideoHeight}:sws_flags=lanczos:param0=3:sws_dither=none,split [a][b];[a] palettegen=max_colors=${maxColorsCorrected}:stats_mode=single:reserve_transparent=false [p];[b][p] paletteuse=new=1${ffDitherOptions}\" -y ${tmpDir}/${FRAME_NAME_SUFFIX}.png"
-            echo "EXECUTING: $FFMPEG_LINE"
-            eval ${FFMPEG_LINE}
+            FFMPEG_COMMAND="ffmpeg -i $inputFileName $FFMPEG_QUIET_OPTIONS -filter_complex \"[0:v] fps=${framesPerSecond},scale=w=${outputVideoWidth}:h=${outputVideoHeight}:sws_flags=lanczos:param0=3:sws_dither=none,split [a][b];[a] palettegen=max_colors=${maxColorsCorrected}:stats_mode=single:reserve_transparent=false [p];[b][p] paletteuse=new=1${ffDitherOptions}\" -y ${tmpDir}/${FRAME_NAME_SUFFIX}.png"
+            echo "EXECUTING: $FFMPEG_COMMAND"
+            eval ${FFMPEG_COMMAND}
             echo "Extracted resized and paletted PNG frames as: $tmpDir/frame${firstFrameNumber}.png"
         else
             # extract resized PNG video frames with ffmpeg
             echo "Extracting frames from $inputFileName and resizing with ffmpeg"
-            FFMPEG_LINE="ffmpeg -i $inputFileName $FFMPEG_QUIET_OPTIONS -filter_complex \"[0:v] fps=${framesPerSecond},scale=w=${outputVideoWidth}:h=${outputVideoHeight}:sws_flags=lanczos:param0=3:sws_dither=none\" -y ${tmpDir}/${FRAME_NAME_SUFFIX}.png"
-            echo "EXECUTING: $FFMPEG_LINE"
-            eval ${FFMPEG_LINE}
+            FFMPEG_COMMAND="ffmpeg -i $inputFileName $FFMPEG_QUIET_OPTIONS -filter_complex \"[0:v] fps=${framesPerSecond},scale=w=${outputVideoWidth}:h=${outputVideoHeight}:sws_flags=lanczos:param0=3:sws_dither=none\" -y ${tmpDir}/${FRAME_NAME_SUFFIX}.png"
+            echo "EXECUTING: $FFMPEG_COMMAND"
+            eval ${FFMPEG_COMMAND}
             echo "Extracted resized PNG frames as: $tmpDir/frame${firstFrameNumber}.png"
         fi
     fi
@@ -213,7 +213,7 @@ function ExtractVideoData {
 function ExtractAudioData {
     # check audio output file name
     if [[ $audioMode != "none" ]]; then
-        if [[ "$audioOutFile" == "__nofilename__" ]]
+        if [[ -z "$audioOutFile" ]]
         then
             audioOutFile=${tmpDir}/${bareFileName}-$audioMode.raw
         fi
@@ -256,17 +256,17 @@ function BatchFileConversion {
         # invoke ham_convert with batch file now
         if [[ "$hamMode" == "yes" ]] || [[ "$colorMode" == "ehb" ]]; then
             echo "Converting batch file with '$conversionTool' using color mode '$colorMode'."
-            COMMAND="java -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE $hcColorModeOption $hcBlackBackgroundOption $hcDitherModeOption $hcDiversityOption $hcQuantOption $hcPropagationOption norle"
-            echo "EXECUTING: $COMMAND"
-            eval $COMMAND
+            HAM_CONVERT_COMMAND="java -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE $hcColorModeOption $hcExtraOptions"
+            echo "EXECUTING: $HAM_CONVERT_COMMAND"
+            eval $HAM_CONVERT_COMMAND
         else
             # may add non-ham ocs modes ocs8,16,32 (12-bit color space) later
             case $maxColors in
                 256|128|64)
                     echo "Converting batch file with '$conversionTool' using "$maxColors" colors (24-bit color space)."
-                    COMMAND="java -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE aga$maxColors $hcBlackBackgroundOption $hcDitherModeOption $hcDiversityOption $hcQuantOption $hcPropagationOption norle"
-                    echo "EXECUTING:$COMMAND"
-                    eval $COMMAND
+                    HAM_CONVERT_COMMAND="java -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE aga$maxColors $hcExtraOptions"
+                    echo "EXECUTING: $HAM_CONVERT_COMMAND"
+                    eval $HAM_CONVERT_COMMAND
                     ;;
                 *)
                     echo "Error: color mode $colorMode with $maxColors colors not supported for $tool. Only 64, 128, 256 colors supported."
@@ -285,15 +285,15 @@ function SingleFileConversion {
         case $conversionTool in
             ham_convert)
                 if [[ "$hamMode" == "yes" ]] || [[ "$colorMode" == "ehb" ]]; then
-                    echo "Converting $pngfile with '$conversionTool' using color mode '$colorMode' and extra options '$hcBlackBackgroundOption'"
-                    java -jar "./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR" $pngfile $colorMode $hcBlackBackgroundOption $hcExtraOptions norle
+                    echo "Converting $pngfile with '$conversionTool' using color mode '$colorMode':"
+                    COMMAND="java -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $pngfile $colorMode $hcExtraOptions"
+                    eval $COMMAND
                 else
                     # may add non-ham ocs modes ocs8,16,32 (12-bit color space) later
                     case $maxColors in
                         256|128|64)
-                            echo "Converting $pngfile with '$conversionTool' using "$maxColors" colors (24-bit color space) and extra options '$hcBlackBackgroundOption'"
-                            COMMAND="java -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $pngfile aga$maxColors $hcBlackBackgroundOption $hcExtraOptions norle"
-                            echo "EXECUTING:$COMMAND"
+                            echo "Converting $pngfile with '$conversionTool' using "$maxColors" colors (24-bit color space):"
+                            COMMAND="java -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $pngfile aga$maxColors $hcExtraOptions"
                             eval $COMMAND
                             ;;
                         *)
@@ -340,9 +340,9 @@ function EncodeCDXL {
             echo "Error: cannot determine input for CDXL encoding. Unknown conversion tool $conversionTool."
             exit
     esac
-    AGACONVCOMMAND="${AGACONV_ENCODE} --cdxl-encode --fps $framesPerSecond --pcm-file $audioOutFile --audio-mode $audioMode --gfx-mode $screenMode ${agaconvEncodeColorOption} --frequency $frequency --cdxl-padding-size 4 $convertedFrame $outputFileName --status ${agaconvQuietModeOption}"
-    echo "EXECUTING: $AGACONVCOMMAND"
-    $AGACONVCOMMAND
+    AGACONV_COMMAND="${AGACONV_ENCODE} --cdxl-encode --fps $framesPerSecond --pcm-file $audioOutFile --audio-mode $audioMode --gfx-mode $screenMode ${agaconvEncodeColorOption} --frequency $frequency --cdxl-padding-size 4 $convertedFrame $outputFileName --status ${agaconvQuietModeOption}"
+    echo "EXECUTING: $AGACONV_COMMAND"
+    eval $AGACONV_COMMAND
 }
 
 function SetInputVideoDimensions {
@@ -626,12 +626,12 @@ planes=$(log2 $maxColors)
 
 outputVideoWidth=$width
 
-if [[ "$inputFileName" == "__nofilename__" ]]
+if [[ -z "$inputFileName" ]]
 then
     echo "No input file name provided (use option --in=FILENAME)."
     exit
 fi
-if [[ "$outputFileName" == "__nofilename__" ]]
+if [[ -z "$outputFileName" ]]
 then
     echo "No output file name provided (use option --out=FILENAME)."
     exit
@@ -808,6 +808,8 @@ elif [[ $conversionTool == "ffmpeg" ]]; then
     esac
 fi
 
+hcExtraOptions="$hcBlackBackgroundOption $hcDitherModeOption $hcDiversityOption $hcQuantOption $hcPropagationOption norle"
+
 ComputeVideoFps
 
 # determine FPS to use
@@ -823,7 +825,7 @@ if [ "$framesPerSecond" -eq 0 ];then
     fi
 fi
 
-if [[ "$tmpDir" == "__notmppath__" ]]; then
+if [[ -z "$tmpDir" ]]; then
     tmpDirPrefix="tmp"
     case $tmpDirType in
         fn|file_name)
