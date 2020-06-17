@@ -34,7 +34,7 @@
 # exit on any error in script
 set -e
 
-agaconvVersion=0.9.5.2
+agaconvVersion=0.9.5.3
 
 LC_NUMERIC=POSIX
 
@@ -92,6 +92,10 @@ FFMPEG_QUIET_OPTIONS="-y -hide_banner"
 
 # this option is removed for OCS modes
 agaconvEncodeColorOption=--cdxl-24bit-colors
+
+# request initial 500 MiB heap size, maximum 2 GiB heap size memory for the Java virtual machine (only relevant when using ham_convert)
+# java -X to print all -X options, -X options are non-standard and subject to change without notice
+JVM_MEMORY_OPTIONS="-Xms500m -Xmx2g"
 
 function PrintHelpMessage {
     echo "Usage:"
@@ -240,7 +244,7 @@ function ExtractAudioData {
 
 }
 
-HAM_CONVERT_VERSION=1.6.1
+HAM_CONVERT_VERSION=1.6.2
 HAM_CONVERT_PATH="ham_convert"
 HAM_CONVERT_JAR="ham_convert_${HAM_CONVERT_VERSION}.jar"
 
@@ -256,7 +260,7 @@ function BatchFileConversion {
         # invoke ham_convert with batch file now
         if [[ "$hamMode" == "yes" ]] || [[ "$colorMode" == "ehb" ]]; then
             echo "Converting batch file with '$conversionTool' using color mode '$colorMode'."
-            HAM_CONVERT_COMMAND="java -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE $hcColorModeOption $hcExtraOptions"
+            HAM_CONVERT_COMMAND="java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE $hcColorModeOption $hcExtraOptions"
             echo "EXECUTING: $HAM_CONVERT_COMMAND"
             eval $HAM_CONVERT_COMMAND
         else
@@ -264,7 +268,7 @@ function BatchFileConversion {
             case $maxColors in
                 256|128|64)
                     echo "Converting batch file with '$conversionTool' using "$maxColors" colors (24-bit color space)."
-                    HAM_CONVERT_COMMAND="java -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE aga$maxColors $hcExtraOptions"
+                    HAM_CONVERT_COMMAND="java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE aga$maxColors $hcExtraOptions"
                     echo "EXECUTING: $HAM_CONVERT_COMMAND"
                     eval $HAM_CONVERT_COMMAND
                     ;;
@@ -286,14 +290,14 @@ function SingleFileConversion {
             ham_convert)
                 if [[ "$hamMode" == "yes" ]] || [[ "$colorMode" == "ehb" ]]; then
                     echo "Converting $pngfile with '$conversionTool' using color mode '$colorMode':"
-                    COMMAND="java -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $pngfile $colorMode $hcExtraOptions"
+                    COMMAND="java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $pngfile $colorMode $hcExtraOptions"
                     eval $COMMAND
                 else
                     # may add non-ham ocs modes ocs8,16,32 (12-bit color space) later
                     case $maxColors in
                         256|128|64)
                             echo "Converting $pngfile with '$conversionTool' using "$maxColors" colors (24-bit color space):"
-                            COMMAND="java -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $pngfile aga$maxColors $hcExtraOptions"
+                            COMMAND="java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $pngfile aga$maxColors $hcExtraOptions"
                             eval $COMMAND
                             ;;
                         *)
