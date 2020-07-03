@@ -21,7 +21,7 @@ Overview of supported video/audio modes:
 AGAConv uses ffmpeg to extract video frames from various video
 formats, ffmpeg or ham_convert to convert extracted frames to PNG or
 IFF files, and agaconv-encode to encode a list of PNG or IFF files and
-an 8-bit PCM audio stream into a CDXL video. The CDXL video can played
+an 8-bit PCM audio stream into a CDXL video. The CDXL video can be played
 with [AGABlaster](https://mschordan.github.io/amiga/agablaster.html).
 
 ## Availability
@@ -32,7 +32,7 @@ AGAConv was tested on Ubuntu 18.04 and on Windows 10 with Microsoft's Ubuntu app
 
 ## Version
 
-Version: 0.9.5
+Version: 0.9.5.4
 
 ## Author
 

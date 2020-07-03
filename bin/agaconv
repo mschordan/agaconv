@@ -34,7 +34,7 @@
 # exit on any error in script
 set -e
 
-agaconvVersion=0.9.5.3
+agaconvVersion=0.9.5.4
 
 LC_NUMERIC=POSIX
 
@@ -93,6 +93,17 @@ FFMPEG_QUIET_OPTIONS="-y -hide_banner"
 # this option is removed for OCS modes
 agaconvEncodeColorOption=--cdxl-24bit-colors
 
+quietMode="no"
+
+if hash xvfb-run 2>/dev/null; then
+    # only relevant for Windows 10 Ubuntu App using WSL1
+    SERVER_COMMAND="xvfb-run -a"
+    XVFB_INSTALLED=yes
+else
+    SERVER_COMMAND=""
+    XVFB_INSTALLED=no
+fi
+
 # request initial 500 MiB heap size, maximum 2 GiB heap size memory for the Java virtual machine (only relevant when using ham_convert)
 # java -X to print all -X options, -X options are non-standard and subject to change without notice
 JVM_MEMORY_OPTIONS="-Xms500m -Xmx2g"
@@ -106,7 +117,7 @@ function PrintHelpMessage {
     echo "  [--max-colors=NUMBER] (default: 256 (8 planes))"
     echo "  [--color-mode=normal|ham6|ham8|ehb] (default: normal (24-bit colors))"
     echo "  [--screen-mode=lores|hires|superhires] (default: lores)"
-    echo "  [--monitor-mode=keep_ratio|aspect|fill1080|fill1200] (default: keep_ratio)"
+    echo "  [--monitor-mode=keep_ratio|amiga|aspect|fill1080|fill1200] (default: keep_ratio)"
     echo "  ]--scale-factor=NUMBER (forces this factor, ignores monitor-mode)"
     echo "  [--width=NUMBER] (default: 320)"
     echo "  [--height=auto|NUMBER] (default: auto)"
@@ -116,7 +127,7 @@ function PrintHelpMessage {
     echo "  [--ff-bayer-scale=NUMBER] 0..5 (default:4)"
     echo "  [--hc-dither=none|bayer|fs] (default:bayer)"
     echo "  [--hc-propagation=NUMBER] 0..100 (default:5)"
-    echo "  [--hc-diversity=NUMBER] : 0..9 (default: 5), except ehb:0-6 (default 3))"
+    echo "  [--hc-diversity=NUMBER] : 0..9 (default: 5), except ehb:0-6 (default: 3))"
     echo "  [--hc-ham-quality=NUMBER] : 1..4: (default: 1 (fastest))"
     echo "  [--hc-quant=wu|neuquant] (default: wu quantisation)"
     echo "  [--extraction-tool=ffmpeg] (default)"
@@ -147,6 +158,23 @@ echo "There is NO WARRANTY, to the extent permitted by law."
 echo "Written by Markus Schordan."
 }
 
+function checkHamConvertOutput {
+    expectedOutputFile=$1
+    if [ ! -f $expectedOutputFile ]; then
+        echo "CHECKING ham_convert output: FAILED (file $expectedOutputFile does not exist)"
+        echo "Error: ham_convert did not generate any output file."
+        if [[ $XVFB_INSTALLED == "no" ]]; then
+            echo "On Windows 10 installing 'xvfb' with \"sudo apt install xvfb\" may fix this problem."
+            exit 1
+        else
+            echo "Bailing out."
+            exit 1
+        fi
+    else
+        echo "CHECKING ham_convert output: OK"
+    fi
+}
+
 function log2 {
     local val=$1
     local x=0
@@ -175,14 +203,13 @@ function readableTime {
 }
 
 function ExtractVideoData {
+    echo "quietMode: $quietMode"
     if [[ "$fixedFrameDigits" == "0" ]]; then
         FRAME_NAME_SUFFIX="frame%d"
         firstFrameNumber=1
     else
         FRAME_NAME_SUFFIX="frame%0${fixedFrameDigits}d"
         firstFrameNumber=$(printf "%0${fixedFrameDigits}d" 1)
-        echo "FRAME_NAME_SUFFIX: $FRAME_NAME_SUFFIX"
-        echo "firstFrameNumber   : $firstFrameNumber"
     fi
     if [[ "$skipFrameExtraction" == "yes" ]]; then
         echo "Skipping video data extraction."
@@ -197,19 +224,27 @@ function ExtractVideoData {
                 echo "Error: The maximum number of colors must be at least 2."
                 exit 1
             fi
-            echo "Extracing frames from $inputFileName, resizing, and paletting with ${maxColors} colors using ffmpeg"
+            if [[ "$quietMode" == "no" ]]; then
+                echo "Extracting frames from $inputFileName, resizing, and paletting with ${maxColors} colors using ffmpeg"
+            fi
             maxColorsCorrected=$(($maxColors-2)) # one for background color, and one for ffmpeg bug
             FFMPEG_COMMAND="ffmpeg -i $inputFileName $FFMPEG_QUIET_OPTIONS -filter_complex \"[0:v] fps=${framesPerSecond},scale=w=${outputVideoWidth}:h=${outputVideoHeight}:sws_flags=lanczos:param0=3:sws_dither=none,split [a][b];[a] palettegen=max_colors=${maxColorsCorrected}:stats_mode=single:reserve_transparent=false [p];[b][p] paletteuse=new=1${ffDitherOptions}\" -y ${tmpDir}/${FRAME_NAME_SUFFIX}.png"
             echo "EXECUTING: $FFMPEG_COMMAND"
             eval ${FFMPEG_COMMAND}
-            echo "Extracted resized and paletted PNG frames as: $tmpDir/frame${firstFrameNumber}.png"
+            if [[ "$quietMode" == "no" ]]; then
+                echo "Extracted resized and paletted PNG frames as: $tmpDir/frame${firstFrameNumber}.png"
+            fi
         else
             # extract resized PNG video frames with ffmpeg
-            echo "Extracting frames from $inputFileName and resizing with ffmpeg"
+            if [[ "$quietMode" == "no" ]]; then
+                echo "Extracting frames from $inputFileName and resizing with ffmpeg"
+            fi
             FFMPEG_COMMAND="ffmpeg -i $inputFileName $FFMPEG_QUIET_OPTIONS -filter_complex \"[0:v] fps=${framesPerSecond},scale=w=${outputVideoWidth}:h=${outputVideoHeight}:sws_flags=lanczos:param0=3:sws_dither=none\" -y ${tmpDir}/${FRAME_NAME_SUFFIX}.png"
             echo "EXECUTING: $FFMPEG_COMMAND"
             eval ${FFMPEG_COMMAND}
-            echo "Extracted resized PNG frames as: $tmpDir/frame${firstFrameNumber}.png"
+            if [[ "$quietMode" == "no" ]]; then
+                echo "Extracted resized PNG frames as: $tmpDir/frame${firstFrameNumber}.png"
+            fi
         fi
     fi
 }
@@ -240,8 +275,9 @@ function ExtractAudioData {
     esac
 
     ffmpeg -i $inputFileName $FFMPEG_QUIET_OPTIONS -ar ${frequency} -f u8 -acodec pcm_u8 $AUDIO_MODE_OPTION $audioOutFile
-    echo "Extracted $audioMode audio file: $audioOutFile"
-
+    if [[ "$quietMode" == "no" ]]; then
+        echo "Extracted $audioMode audio file: $audioOutFile"
+    fi
 }
 
 HAM_CONVERT_VERSION=1.6.2
@@ -259,16 +295,20 @@ function BatchFileConversion {
         done
         # invoke ham_convert with batch file now
         if [[ "$hamMode" == "yes" ]] || [[ "$colorMode" == "ehb" ]]; then
-            echo "Converting batch file with '$conversionTool' using color mode '$colorMode'."
-            HAM_CONVERT_COMMAND="java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE $hcColorModeOption $hcExtraOptions"
+            if [[ "$quietMode" == "no" ]]; then
+                echo "Converting batch file with '$conversionTool' using color mode '$colorMode'."
+                fi
+            HAM_CONVERT_COMMAND="$SERVER_COMMAND java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE $hcColorModeOption $hcExtraOptions"
             echo "EXECUTING: $HAM_CONVERT_COMMAND"
             eval $HAM_CONVERT_COMMAND
         else
             # may add non-ham ocs modes ocs8,16,32 (12-bit color space) later
             case $maxColors in
                 256|128|64)
-                    echo "Converting batch file with '$conversionTool' using "$maxColors" colors (24-bit color space)."
-                    HAM_CONVERT_COMMAND="java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE aga$maxColors $hcExtraOptions"
+                    if [[ "$quietMode" == "no" ]]; then
+                        echo "Converting batch file with '$conversionTool' using "$maxColors" colors (24-bit color space)."
+                    fi
+                    HAM_CONVERT_COMMAND="$SERVER_COMMAND java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE aga$maxColors $hcExtraOptions"
                     echo "EXECUTING: $HAM_CONVERT_COMMAND"
                     eval $HAM_CONVERT_COMMAND
                     ;;
@@ -289,15 +329,19 @@ function SingleFileConversion {
         case $conversionTool in
             ham_convert)
                 if [[ "$hamMode" == "yes" ]] || [[ "$colorMode" == "ehb" ]]; then
-                    echo "Converting $pngfile with '$conversionTool' using color mode '$colorMode':"
-                    COMMAND="java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $pngfile $colorMode $hcExtraOptions"
+                    if [[ "$quietMode" == "no" ]]; then
+                        echo "Converting $pngfile with '$conversionTool' using color mode '$colorMode':"
+                    fi
+                    COMMAND="$SERVER_COMMAND java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $pngfile $colorMode $hcExtraOptions"
                     eval $COMMAND
                 else
                     # may add non-ham ocs modes ocs8,16,32 (12-bit color space) later
                     case $maxColors in
                         256|128|64)
-                            echo "Converting $pngfile with '$conversionTool' using "$maxColors" colors (24-bit color space):"
-                            COMMAND="java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $pngfile aga$maxColors $hcExtraOptions"
+                            if [[ "$quietMode" == "no" ]]; then
+                                echo "Converting $pngfile with '$conversionTool' using "$maxColors" colors (24-bit color space):"
+                            fi
+                            COMMAND="$SERVER_COMMAND java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $pngfile aga$maxColors $hcExtraOptions"
                             eval $COMMAND
                             ;;
                         *)
@@ -336,6 +380,7 @@ function EncodeCDXL {
     case $conversionTool in
         ham_convert)
             convertedFrame=${tmpDir}/${convertedNamePrefix}_output.iff
+            checkHamConvertOutput $convertedFrame
             ;;
         ffmpeg)
             convertedFrame=${tmpDir}/${convertedNamePrefix}.png
@@ -541,6 +586,7 @@ do
         --quiet)
             agaconvQuietModeOption="--quiet"
             FFMPEG_QUIET_OPTIONS=$FFMPEG_QUIET_OPTIONS_ALL
+            quietMode="yes"
             shift
             ;;
         --audio-mode=*)
@@ -749,15 +795,12 @@ if [[ $conversionTool == "ham_convert" ]]; then
             hcHamQualityOption=fastest
             ;;
         2)
-            hcHamQualityOption=faster
-            ;;
-        3)
             hcHamQualityOption=fast
             ;;
-        4)
+        3)
             hcHamQualityOption=normal
             ;;
-        5)
+        4)
             hcHamQualityOption=slow
             ;;
         *)
@@ -791,7 +834,11 @@ if [[ $conversionTool == "ham_convert" ]]; then
          
     # compose command line option for ham_convert's ham/ehb modes
     if [[ $hamMode == "yes" ]]; then
-        hcColorModeOption="${colorMode}_${hcHamQualityOption}"
+        if [[ $hcHamQualityOption == "normal" ]]; then
+            hcColorModeOption="${colorMode}"
+        else
+            hcColorModeOption="${colorMode}_${hcHamQualityOption}"
+        fi
     elif [[ $colorMode == "ehb" ]]; then
         hcColorModeOption="ehb"
     fi
@@ -812,7 +859,7 @@ elif [[ $conversionTool == "ffmpeg" ]]; then
     esac
 fi
 
-hcExtraOptions="$hcBlackBackgroundOption $hcDitherModeOption $hcDiversityOption $hcQuantOption $hcPropagationOption norle"
+hcExtraOptions="$hcBlackBackgroundOption $hcDitherModeOption $hcDiversityOption $hcQuantOption $hcPropagationOption norle nopng"
 
 ComputeVideoFps
 
