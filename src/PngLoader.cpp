@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,13 +46,25 @@ void PngLoader::printFileInfo() {
   cout<<sep;
   cout<<"Height: "<<_height;
   cout<<sep;
-  cout<<"color type: "<<+_colorType;
+  cout<<"color type: "<<colorTypeToString();
   cout<<sep;
   cout<<"Bit depth: "<<+_bitDepth;
   cout<<endl;
 }
 void PngLoader::readFile(string inFileName) {
   readPngFile(const_cast<char*>(inFileName.c_str()));
+}
+
+string PngLoader::colorTypeToString() {
+  switch(_colorType) {
+  case PNG_COLOR_TYPE_GRAY: return "gray";
+  case PNG_COLOR_TYPE_GRAY_ALPHA: return "gray alpha";
+  case PNG_COLOR_TYPE_PALETTE: return "palette";
+  case PNG_COLOR_TYPE_RGB: return "RGB";
+  case PNG_COLOR_TYPE_RGB_ALPHA: return "RGB alpha";
+    // intentionally no default case, trigger compiler warning if a case is missing
+  }
+  assert(false);
 }
 
 void PngLoader::readPngFile(char *filename) {
@@ -216,37 +228,39 @@ UBYTE PngLoader::getOptimizedBitDepth() {
 
 // the PNG palette extracted by ffmpeg may contain more color entries than colors that are actually used in the picture.
 // This routine determines the used colors, and remaps the color indexes to the new color scheme.
+// This can leave some bitplanes unused which can later be ignored if fixed number of bitplanes is requested
 // #newNumColors <= numColors
 void PngLoader::optimizePngPalette() {
-    const int colorOffset=1; // offset (currently fixed to 1 to reserve background color)
+  const int colorOffset=1; // offset (currently fixed to 1 to reserve background color)
   // max colors is 256
-  int const maxCol=256;
-  int colorNrCount[maxCol]={}; // only those color indexes are mapped that have more than 0 uses
-  UBYTE colorNrMapping[maxCol]={}; // defines which color-index should be mapped to which new color_index 
-  for(int i=0;i<maxCol;i++) colorNrMapping[i]=-1;
+  uint32_t const maxCol=256;
+  uint32_t colorNrCount[maxCol]={}; // only those color indexes are mapped that have more than 0 uses
+  UBYTE colorNrNewIndex[maxCol]={}; // defines which color-index should be mapped to which new color_index 
+  for(uint32_t i=0;i<maxCol;i++)
+    colorNrNewIndex[i]=0;
   for (int y = 0; y < _height; y++) {
     for (int x = 0; x < _width; x++) {
       UBYTE palette_index = *(UBYTE*)((_pngImageData[y])+x);
-      assert(palette_index>=0 && palette_index<maxCol);
+      assert(palette_index>=0 && (((int)palette_index)<maxCol)); // note: UBYTE 0-255
       colorNrCount[palette_index]++;
     }
   }
   int numUsedCol=0;
   int checkSum=0;
-  //  cout<<"Color counts:";
-  for(int i=0;i<maxCol;i++) {
-    //cout<<+colorNrCount[i]<<" ";
+  if(options.debug) cout<<"Color counts:";
+  for(uint32_t i=0;i<maxCol;i++) {
+    if(options.debug) cout<<+colorNrCount[i]<<" ";
     checkSum+=colorNrCount[i];
     if(colorNrCount[i]>0) {
       numUsedCol++;
     }
   }
   assert(checkSum==_width*_height);
-  //cout<<"\nNumber of used colors: "<<numUsedCol<<endl;
-  int newColLastCol=colorOffset;
-  for(int i=0;i<maxCol;i++) {
+  if(options.debug) cout<<"Number of used colors: "<<numUsedCol<<endl;
+  uint32_t newColLastCol=colorOffset;
+  for(uint32_t i=0;i<maxCol;i++) {
     if(colorNrCount[i]>0) {
-      colorNrMapping[i]=newColLastCol;
+      colorNrNewIndex[i]=newColLastCol;
       newColLastCol++;
     }
   }
@@ -254,43 +268,58 @@ void PngLoader::optimizePngPalette() {
   if(newColLastCol>maxCol) {
     cerr<<"\n\n";
     cerr<<"Error: input image palette has too many colors to reserve offset color(s)."<<endl;
-    cerr<<"       input image has "<<numUsedCol<<" colors. With "<<colorOffset<<" offset color(s) this requires "<<newColLastCol<<" colors. Maximum is 256 colors."<<endl;
+    cerr<<"       input image has "<<numUsedCol<<" colors. With "<<colorOffset<<" offset color(s) this requires "<<newColLastCol<<" colors. Maximum is "<<maxCol<<" colors."<<endl;
     cerr<<"Note : ffmpeg sometimes extracts one more color than requested."<<endl;
     exit(1);
   }
-#if 0
   // print mapping
-  cout<<"ColorNrMapping:";
-  for(int i=0;i<maxCol;i++) {
-    if(colorNrCount[i]==0)
-      cout<<i<<"->X"<<" ";
-    else
-      cout<<i<<"->"<<+colorNrMapping[i]<<" ";
+  if(options.debug) {
+    cout<<"ColorNrMapping:";
+    for(uint32_t i=0;i<maxCol;i++) {
+      if(colorNrCount[i]==0)
+        cout<<i<<"->X"<<" ";
+      else
+        cout<<i<<"->"<<+colorNrNewIndex[i]<<" ";
+    }
+    cout<<endl;
   }
-  cout<<endl;
-#endif
   
   // perform remapping
   // remap all body data: iterate over all pixels and remap color index
   for (int y = 0; y < _height; y++) {
     for (int x = 0; x < _width; x++) {
       UBYTE palette_index = *((_pngImageData[y])+x);
-      *((_pngImageData[y])+x)=colorNrMapping[palette_index];
+      *((_pngImageData[y])+x)=colorNrNewIndex[palette_index];
     }
   }
   // rewrite colormap
-  // create copy of colormap (required because mapping can go in both directions when reserving colors)
-  std::vector<RGBColor> rgbPaletteCopy=rgbPalette;
+  // create copy of colormap (required because mapping can move colors in both directions in color map when reserving colors)
+  std::vector<RGBColor> rgbPaletteCopy(rgbPalette);
   assert(rgbPaletteCopy.size()==rgbPalette.size());
   for(size_t i=0;i<rgbPalette.size();i++) {
-    if(colorNrCount[i]>0)
-      rgbPalette[colorNrMapping[i]]=rgbPaletteCopy[i];
+    if(colorNrCount[i]>0) {
+      assert(((int)colorNrNewIndex[i])>=colorOffset);
+      rgbPalette[colorNrNewIndex[i]]=rgbPaletteCopy[i];
+    }
   }
   // set all offset colors to black
-  for(int i=0;i<colorOffset;i++) {
+  for(uint32_t i=0;i<colorOffset;i++) {
     rgbPalette[i]=RGBColor(0,0,0);
   }
   rgbPalette.resize(colorOffset+numUsedCol);
+  if(options.debug) cout<<"Resized color palette colors: "<<rgbPalette.size()<<endl;
+
+  // consistency check: ensure that all new color index are within the new color palette
+  int totalCheckCount=0;
+  size_t newColNum=rgbPalette.size();
+  for (int y = 0; y < _height; y++) {
+    for (int x = 0; x < _width; x++) {
+      UBYTE palette_index = *(UBYTE*)((_pngImageData[y])+x);
+      assert(palette_index<newColNum);
+      totalCheckCount++;
+    }
+  }
+  assert(totalCheckCount==checkSum);
 }
 
 IffBODYChunk* PngLoader::createIffBODYChunk() {
@@ -302,7 +331,7 @@ IffBODYChunk* PngLoader::createIffBODYChunk() {
   int numBitPlanes=_bitDepth;
   char** bitplanes;
   allocateIntermediateBitplanes(bitplanes,numBitPlanes);
-  // create bitplanes from PNG chunky data
+  // create (uncompressed) ILBM bitlines from PNG chunky data
   for (int y = 0, writeIndex = 0; y < _height; y++) {
     for (int byte = 0;byte < getByteWidth(); byte++) {
       for (int bit = 0; bit < 8; bit++) {	
@@ -318,7 +347,7 @@ IffBODYChunk* PngLoader::createIffBODYChunk() {
     }
   }
 
-  // add bitplanes to bodyChunk (plane 0 .. n)
+  // add bitplanes to bodyChunk (plane 0 .. n), note: converting to ILBM bitlines
   int numConvertedBitPlanes=getOptimizedBitDepth();
   for (int y = 0; y < _height; y++) {
     for (int plane_index = 0; plane_index < numConvertedBitPlanes; plane_index++) {
@@ -337,7 +366,6 @@ IffBODYChunk* PngLoader::createIffBODYChunk() {
 }
 
 IffILBMChunk* PngLoader::createILBMChunk() {
-  optimizePngPalette();
   IffCMAPChunk* cmapChunk=createIffCMAPChunk();
   IffBMHDChunk* bmhdChunk=createIffBMHDChunk();
   IffCAMGChunk* camgChunk=createIffCAMGChunk(bmhdChunk);
@@ -356,7 +384,6 @@ IffILBMChunk* PngLoader::createILBMChunk() {
     exit(1);
   }
 
-  //cout<<"DEBUG: creating ilbmChunk."<<endl;
   // create ilbmChunk
   IffILBMChunk* ilbmChunk=new IffILBMChunk();
   ilbmChunk->insertFirst(bmhdChunk);

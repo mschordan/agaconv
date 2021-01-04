@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -80,11 +80,11 @@ string FileSequenceConversion::nextFileName() {
   while(newNumberLength>length) {
     fileNamePattern.insert(fileNamePatternReplacePos,"_");
     length++;
-    //cout<<"DEBUG: added one character to fileNamePattern: "<<fileNamePattern<<endl;
+    if(options.debug) cout<<"DEBUG: added one character to fileNamePattern: "<<fileNamePattern<<endl;
   }
   size_t offset=length-newNumberLength;
   fileNamePattern.replace(fileNamePatternReplacePos+offset,newNumberLength,newNumber);
-  //cout<<"DEBUG: updated fileNamePattern: "<<fileNamePattern<<endl;
+  if(options.debug) cout<<"DEBUG: updated fileNamePattern: "<<fileNamePattern<<endl;
   return fileNamePattern;
 }
 
@@ -112,13 +112,14 @@ void FileSequenceConversion::run(Options& optionsIn) {
   preVisitFirstFrame();
   IffILBMChunk* lastILBMChunk=nullptr;
   while(true) {
-    if(options.debug) {
-      cout<<"DEBUG: Reading "<<inFileName<<endl;
-    }
+    if(options.debug) cout<<"DEBUG: Reading "<<inFileName<<endl;
     // TODO generic: test if file exists (exit based on this property)
     // then check file and dispatch to iff or png
     if(!Util::fileExists(inFileName))
       break;
+    if(lastILBMChunk) {
+      delete lastILBMChunk;
+    }
     switch(fileType) {
     case FILE_IFF: {
       if(!options.quiet) {
@@ -127,7 +128,7 @@ void FileSequenceConversion::run(Options& optionsIn) {
       }
       IffILBMChunk* ilbmChunk=readIffFile(inFileName);
       visitILBMChunk(ilbmChunk);
-      lastILBMChunk=ilbmChunk;
+      lastILBMChunk=ilbmChunk; // also used to deallocate after each iteration, except the very last iteration
       break;
     }
     case FILE_PNG: {
@@ -146,6 +147,7 @@ void FileSequenceConversion::run(Options& optionsIn) {
     throw AGAConvException(string("Error: Could not find file ")+inFileName);
   }
   postVisitLastILBMChunk(lastILBMChunk);
+  delete lastILBMChunk;
 }
 
 void FileSequenceConversion::preVisitFirstFrame() {
@@ -168,31 +170,39 @@ void FileSequenceConversion::visitPngFile(std::string pngFileName) {
 
 void FileSequenceConversion::postVisitLastILBMChunk(IffILBMChunk* ilbmChunk) {
   if(ilbmChunk) {
-    IffCAMGChunk* camgChunk=dynamic_cast<IffCAMGChunk*>(ilbmChunk->getChunkByName("CAMG"));
-    IffBMHDChunk* bmhdChunk=dynamic_cast<IffBMHDChunk*>(ilbmChunk->getChunkByName("BMHD"));
-    bool ham=camgChunk->isHam();
-    bool hires=camgChunk->isHires();
-    bool superhires=camgChunk->isSuperHires();
-    UWORD xdim=bmhdChunk->getWidth();
-    UWORD ydim=bmhdChunk->getHeight();
-    UBYTE numPlanes=bmhdChunk->getNumPlanes();
+    if(IffBMHDChunk* bmhdChunk=dynamic_cast<IffBMHDChunk*>(ilbmChunk->getChunkByName("BMHD"))) {
+      UWORD xdim=bmhdChunk->getWidth();
+      UWORD ydim=bmhdChunk->getHeight();
+      UBYTE numPlanes=bmhdChunk->getNumPlanes();
 
-    cout<<"First frame: "<<firstInFileName<<endl;
-    cout<<"Last frame: "<<inFileName<<endl;
-    cout<<"Processed "<<frames+1<<" frames."<<endl;
-    cout<<"Last frame: ";
-    if(ham)
-      cout<<"HAM";
-    else
-      cout<<"AGA";
-    cout<<+numPlanes<<" ";
-    if(superhires)
-      cout<<"SUPERHIRES";
-    else if(hires)
-      cout<<"HIRES";
-    else
-      cout<<"LORES";
-    cout<<" "<<xdim<<"x"<<ydim<<endl;
+      cout<<"First frame file: "<<firstInFileName<<endl;
+      cout<<"Last frame file: "<<inFileName<<endl;
+      cout<<"Processed "<<frames+1<<" frames."<<endl;
+      cout<<"Last frame format: ";
+      if(IffCAMGChunk* camgChunk=dynamic_cast<IffCAMGChunk*>(ilbmChunk->getChunkByName("CAMG"))) {
+        bool ham=camgChunk->isHam();
+        bool hires=camgChunk->isHires();
+        bool superhires=camgChunk->isSuperHires();
+        if(ham)
+          cout<<"HAM";
+        else
+          cout<<"AGA";
+        cout<<+numPlanes<<" ";
+        if(superhires)
+          cout<<"SUPERHIRES";
+        else if(hires)
+          cout<<"HIRES";
+        else
+          cout<<"LORES";
+      } else {
+        cout<<+numPlanes<<" planes";
+        cout<<" "<<xdim<<"x"<<ydim<<" (no CAMG chunk found)"<<endl;
+      }
+      cout<<endl;
+    } else {
+      cerr<<endl<<"Error: no BMHD chunk found in ILBM IFF file."<<endl;
+      exit(1);
+    }
   }
 }
 

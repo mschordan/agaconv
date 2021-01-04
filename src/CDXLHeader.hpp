@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,8 +57,10 @@ struct CDXLInfo {
 
 struct CDXLGfxModes {
   string colorBitsFlagToString();
+  string killEHBFlagToString();
+  string resolutionModesToString();
   UBYTE getUBYTE();
-  UBYTE paddingModes:3,colorBitsFlag:1,resolutionModes:4;
+  UBYTE reserved:2,killEHBFlag:1,colorBitsFlag:1,resolutionModes:4;
   string toString();
 };
 
@@ -82,10 +84,12 @@ class CDXLHeader : public CDXLBlock {
   void setEncoding(CDXLVideoEncoding encoding);
   void setSoundMode(CDXLSoundMode mode);
   CDXLSoundMode getSoundMode();
-  void setFrameNr(UWORD nr);
+  void setFrameNr(ULONG nr);
   UWORD getNumberOfBitplanes();
+  void setNumberOfBitplanes(UWORD);
   
   UWORD getPaletteSize();
+  void setPaletteSize(UWORD);
   void setChannelAudioSize(ULONG size);
   UWORD getChannelAudioSize();
   UWORD getTotalAudioSize();
@@ -94,40 +98,46 @@ class CDXLHeader : public CDXLBlock {
   UWORD getVideoWidth();
   UWORD getVideoHeight();
 
-  UWORD getCurrentFrameNr();
+  ULONG getCurrentFrameNr();
   UWORD getFrequency();
   void setFrequency(UWORD frequency);
   void setFps(UBYTE fps);
   void setResolutionModes(UBYTE modes);
   void setColorBitsFlag(bool flag);
   bool getColorBitsFlag();
+  void setKillEHBFlag(bool flag);
+  bool getKillEHBFlag();
   void setPaddingModes(UBYTE modes);
   UBYTE getPaddingModes();
   ULONG getPaddingSize();
+  string paddingModesToString();
   void setPaddingSize(ULONG);
   bool isConsistent();
-  ULONG getColorPaddingBytes();
-  ULONG getAudioPaddingBytes();
-  ULONG getVideoPaddingBytes();
-  ULONG getTotalPaddingBytes();
- protected:
+  ULONG getColorPaddingBytes(); // computed, not extracted from padding field
+  ULONG getAudioPaddingBytes(); // computed, not extracted from padding field
+  ULONG getVideoPaddingBytes(); // computed, not extracted from padding field
+  ULONG getTotalPaddingBytes(); // computed, not extracted from padding field
+
+  UWORD getNumberOfColors(); // computed based on colorBytes and paletteSize.
+  UWORD getColorBytes(); // 2 or 3
+
+protected:
   UBYTE fileType=STANDARD; // CDXLFileType
-  CDXLInfo info; // BYTE // TODO:initialize here
+  CDXLInfo info; // initialized in constructor (bitfields)
   ULONG currentChunkSize=0; // in bytes
   ULONG previousChunkSize=0; // in bytes
-  UWORD reserved1=0; // upper word of FrameNumber
-  UWORD currentFrameNumber=1; // starting at 1
+  ULONG currentFrameNumber=1; // starting at 1
   UWORD videoWidth=0; // in pixel
   UWORD videoHeight=0; // in pixel
   UWORD numberOfBitplanes=0;
   UWORD paletteSize=0; // in bytes (colors*2 or colors*3)
   UWORD channelAudioSize=0; // in bytes
   UWORD frequency=0; // in Hz (agablaster extension)
-  //UWORD reserved2=0;
   UBYTE fps=0;
  public:
-  CDXLGfxModes modes; // TODO: initialize here
+  CDXLGfxModes modes; // initialized in constructor (bitfields)
  protected:
+  UBYTE paddingModes=0; // extra field
   UWORD padding=0;
   UWORD reserved3=0;
 };

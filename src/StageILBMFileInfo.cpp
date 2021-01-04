@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,9 +30,7 @@ using namespace std;
 void StageILBMFileInfo::run(Options& options) {
   if(options.ilbmInfo) {
     // read ilbm file only
-    if(options.debug) {
-      cout << "DEBUG: Reading ilbm file \"" << options.inFileName << "\"."<<endl;
-    }
+    if(options.debug) cout << "DEBUG: Reading ilbm file \"" << options.inFileName << "\"."<<endl;
     //open file
     fstream inFile0;
     fstream* inFile=&inFile0;
@@ -54,9 +52,8 @@ void StageILBMFileInfo::run(Options& options) {
     if(ilbm.hasBODYChunk()) {
       bool result=ilbm.uncompressBODYChunk();
       if(result) {
+        // not supported yet, is reported earlier
         cout<<"Uncompressed BODY chunk."<<endl;
-        cout<<"Compressed   length: "<<ilbm.compressedBODYLength()<<endl;
-        cout<<"Uncompressed length: "<<ilbm.uncompressedBODYLength()<<endl;
       } else {
         cout<<"BODY chunk not compressed."<<endl;
       }

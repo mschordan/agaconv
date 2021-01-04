@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ class CDXLPalette : public CDXLBlock {
      and generating a 12bit CDXL file (e.g. to remove padding bytes).
   */
  public:
-  enum COLOR_SIZE { COL_12BIT, COL_24BIT };
+  enum COLOR_DEPTH { COL_12BIT, COL_24BIT };
   void readChunk();
   void writeChunk();
   std::string toString();
@@ -59,11 +59,11 @@ class CDXLPalette : public CDXLBlock {
   // imports RGB colors from CMAP chunk.
   void importColors(IffCMAPChunk* cmap);
 
-  void setColorMode(CDXLPalette::COLOR_SIZE colorMode);
-  CDXLPalette::COLOR_SIZE getColorMode();
+  void setColorMode(CDXLPalette::COLOR_DEPTH colorMode);
+  CDXLPalette::COLOR_DEPTH getColorMode();
  private:
   std::vector<RGBColor> rgbColors;
-  COLOR_SIZE _colorMode=COL_12BIT;
+  COLOR_DEPTH _colorMode=COL_12BIT;
 };
 
 #endif

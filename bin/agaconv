@@ -2,7 +2,7 @@
 
 ##########################################################################
 # AGAConv - CDXL video converter for Commodore-Amiga computers           #
-# (C) Copyright 2019-2020 Markus Schordan                                #
+# (C) Copyright 2019-2021 Markus Schordan                                #
 ##########################################################################
 # This program is free software: you can redistribute it and/or modify   #
 # it under the terms of the GNU General Public License as published by   #
@@ -34,7 +34,7 @@
 # exit on any error in script
 set -e
 
-agaconvVersion=0.9.5.4
+agaconvVersion=0.9.6
 
 LC_NUMERIC=POSIX
 
@@ -57,13 +57,22 @@ tmpDir=""
 fixedFrameDigits=4
 firstFrameNumber=0001
 
+variableLengthFrames=yes
+
 skipFrameExtraction=no
 skipFrameConversion=no
-monitorMode=keep_ratio
+monitorMode=amiga
+
+# exits after printing
+printCdxlInfo=no
+userProvidedFrequency=no
+userProvidedFps=no
 
 batchMode=yes
 generateInfoFile=no
 dryRun=no
+
+stdCdxl=no
 
 conversionToolUserRequested=no
 
@@ -91,7 +100,7 @@ FFMPEG_QUIET_OPTIONS_ALL="-y -loglevel panic -hide_banner -nostats"
 FFMPEG_QUIET_OPTIONS="-y -hide_banner"
 
 # this option is removed for OCS modes
-agaconvEncodeColorOption=--cdxl-24bit-colors
+agaconvEncodeColorOption="--color-bits 24"
 
 quietMode="no"
 
@@ -109,23 +118,39 @@ fi
 JVM_MEMORY_OPTIONS="-Xms500m -Xmx2g"
 
 function PrintHelpMessage {
-    echo "Usage:"
-    echo "  --in=INPUTFILENAME (name of input file (any format that ffmpeg can process))"
-    echo "  --out=OUTPUTFILENAME (name of output CDXL file)"
-    echo "  [--max-fps=NUMBER] (max frames per second, default: 25)"
-    echo "  [--fps=NUMBER] (frames per second)"
-    echo "  [--max-colors=NUMBER] (default: 256 (8 planes))"
-    echo "  [--color-mode=normal|ham6|ham8|ehb] (default: normal (24-bit colors))"
+    echo "Usage: ./agaconv INPUTFILE OUTPUTFILE OPTIONS"
+    echo
+    echo " Required arguments:"
+    echo "  INPUTFILE (name of input file (any format that ffmpeg can process))"
+    echo "  OUTPUTFILE (name of output CDXL file)"
+    echo ""
+    echo " OPTIONS:"
+    echo "  [--fps=NUMBER] (frames per second, default: 25)"
+    echo "  [--color-mode=aga8|...|aga3|ham8|ham6|ehb|ocs5|ocs4|ocs3] (default: aga8)"
     echo "  [--screen-mode=lores|hires|superhires] (default: lores)"
-    echo "  [--monitor-mode=keep_ratio|amiga|aspect|fill1080|fill1200] (default: keep_ratio)"
-    echo "  ]--scale-factor=NUMBER (forces this factor, ignores monitor-mode)"
+    echo "  [--monitor-mode=amiga|keep_ratio|fill1080|fill1200] (default: amiga)"
     echo "  [--width=NUMBER] (default: 320)"
     echo "  [--height=auto|NUMBER] (default: auto)"
     echo "  [--audio-mode=mono|stereo] (default: stereo)"
     echo "  [--frequency=NUMBER] (default: 28000)"
-    echo "  [--ff-dither=none|bayer] (default:bayer)"
+    echo "  [--dither=none|fs|bayer] (default: bayer (ffmpeg), fs (ham_convert)"
+    echo "  [--std-cdxl] generate standard CDXL file with 12-bit color palette and fixed frame size"
+    echo "  [--info] show information about CDXL file INPUTFILE"
+    echo "  [--help-extra] additional options (mostly used for testing)"
+    echo "  [--quiet] no output during conversion"
+    echo "  [--version] print agaconv version"
+    echo
+}
+
+function PrintHelpExtraMessage {
+    echo " Testing/developer options:"
+    echo "  [--std-cdxl24] generate standard CDXL file with 24-bit RGB888 color palette and fixed frame size"
+    echo "  [--scale-factor=NUMBER] (forces this factor, ignores monitor-mode)"
+    echo "  [--max-fps=NUMBER] (uses input video fps or max fps (whatever is lower), default: 25)"
+    echo "  [--max-colors=NUMBER] (default: 256 (8 planes))"
+    echo "  [--color-bits=12|24] (default: 24 bit AGA colors)"
     echo "  [--ff-bayer-scale=NUMBER] 0..5 (default:4)"
-    echo "  [--hc-dither=none|bayer|fs] (default:bayer)"
+    echo "  [--hc-dither=none|bayer|fs] (default:fs)"
     echo "  [--hc-propagation=NUMBER] 0..100 (default:5)"
     echo "  [--hc-diversity=NUMBER] : 0..9 (default: 5), except ehb:0-6 (default: 3))"
     echo "  [--hc-ham-quality=NUMBER] : 1..4: (default: 1 (fastest))"
@@ -142,16 +167,13 @@ function PrintHelpMessage {
     echo "  [--skip-frame-extraction] (reuse previously extracted PNG frames)"
     echo "  [--skip-frame-conversion] (reuse previously converted PNG or IFF frames)"
     echo "  [--no-cleanup] do not remove temporary files"
-    echo "  [--cdxl-info=FILENAME] show information about CDXL file FILENAME"
     echo "  [--dry-run] do not perform any actions, only compute values and print"
-    echo "  [--version] print agaconv version"
-    echo "  [--quiet] no output during conversion"
     echo
 }
 
 function printVersion {
 echo "AGAConv version $agaconvVersion"
-echo "Copyright (C) 2019, 2020 Markus Schordan"
+echo "Copyright (C) 2019-2021 Markus Schordan"
 echo "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>."
 echo "This is free software: you are free to change and redistribute it."
 echo "There is NO WARRANTY, to the extent permitted by law."
@@ -192,13 +214,13 @@ function timeDiff {
 }
 
 function readableTime {
-    local dt=$1
-    local dh=$(echo "$dt/3600" | bc)
-    local dt2=$(echo "$dt-3600*$dh" | bc)
-    local dm=$(echo "$dt2/60" | bc)
-    local ds=$(echo "($dt2-60*$dm)/1" | bc)
-    local ds=$(echo "($dt2-60*$dm)" | bc)
-    local time=`printf "%02dh:%02dm:%04.1fs" $dh $dm $ds`
+    local t=$1 # in ms
+    local h=$(echo "$t/3600" | bc)
+    t=$(echo "$t-3600*$h" | bc)
+    local m=$(echo "$t/60" | bc)
+    t=$(echo "$t-60*$m" | bc)
+    local s=$(echo "$t" | bc)
+    local time=`printf "%02dh:%02dm:%04.1fs" $h $m $s`
     echo $time
 }
 
@@ -280,7 +302,7 @@ function ExtractAudioData {
     fi
 }
 
-HAM_CONVERT_VERSION=1.6.2
+HAM_CONVERT_VERSION=1.8.0
 HAM_CONVERT_PATH="ham_convert"
 HAM_CONVERT_JAR="ham_convert_${HAM_CONVERT_VERSION}.jar"
 
@@ -298,7 +320,7 @@ function BatchFileConversion {
             if [[ "$quietMode" == "no" ]]; then
                 echo "Converting batch file with '$conversionTool' using color mode '$colorMode'."
                 fi
-            HAM_CONVERT_COMMAND="$SERVER_COMMAND java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE $hcColorModeOption $hcExtraOptions"
+            HAM_CONVERT_COMMAND="$SERVER_COMMAND java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE $hcColorModeOption $hcExtraOptions $hcAnimOptions"
             echo "EXECUTING: $HAM_CONVERT_COMMAND"
             eval $HAM_CONVERT_COMMAND
         else
@@ -308,7 +330,7 @@ function BatchFileConversion {
                     if [[ "$quietMode" == "no" ]]; then
                         echo "Converting batch file with '$conversionTool' using "$maxColors" colors (24-bit color space)."
                     fi
-                    HAM_CONVERT_COMMAND="$SERVER_COMMAND java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE aga$maxColors $hcExtraOptions"
+                    HAM_CONVERT_COMMAND="$SERVER_COMMAND java $JVM_MEMORY_OPTIONS -jar ./$HAM_CONVERT_PATH/$HAM_CONVERT_JAR $HC_BATCH_FILE aga$maxColors $hcExtraOptions $hcAnimOptions"
                     echo "EXECUTING: $HAM_CONVERT_COMMAND"
                     eval $HAM_CONVERT_COMMAND
                     ;;
@@ -379,19 +401,27 @@ function EncodeCDXL {
     local convertedNamePrefix=frame${firstFrameNumber}
     case $conversionTool in
         ham_convert)
-            convertedFrame=${tmpDir}/${convertedNamePrefix}_output.iff
-            checkHamConvertOutput $convertedFrame
+            firstFrameInputFile=${tmpDir}/${convertedNamePrefix}_output.iff
+            checkHamConvertOutput $firstFrameInputFile
             ;;
         ffmpeg)
-            convertedFrame=${tmpDir}/${convertedNamePrefix}.png
+            firstFrameInputFile=${tmpDir}/${convertedNamePrefix}.png
             ;;
         *)
             echo "Error: cannot determine input for CDXL encoding. Unknown conversion tool $conversionTool."
             exit
     esac
-    AGACONV_COMMAND="${AGACONV_ENCODE} --cdxl-encode --fps $framesPerSecond --pcm-file $audioOutFile --audio-mode $audioMode --gfx-mode $screenMode ${agaconvEncodeColorOption} --frequency $frequency --cdxl-padding-size 4 $convertedFrame $outputFileName --status ${agaconvQuietModeOption}"
-    echo "EXECUTING: $AGACONV_COMMAND"
-    eval $AGACONV_COMMAND
+
+    if [ $variableLengthFrames == "yes" ];then
+        paddingSize=4
+    else
+        paddingSize=0
+        fixedPlanesOption="--fixed-planes $planes"
+    fi
+    
+    AGACONV_ENCODE_COMMAND="${AGACONV_ENCODE} --cdxl-encode --fps $framesPerSecond --pcm-file $audioOutFile --audio-mode $audioMode --gfx-mode $screenMode ${agaconvEncodeColorOption} ${agaconvEncodeStdCdxlOption} ${fixedPlanesOption} --frequency $frequency --cdxl-padding-size $paddingSize $firstFrameInputFile $outputFileName --status ${agaconvQuietModeOption} $DEBUG_OPTION"
+    echo "EXECUTING: $AGACONV_ENCODE_COMMAND"
+    eval $AGACONV_ENCODE_COMMAND
 }
 
 function SetInputVideoDimensions {
@@ -415,14 +445,14 @@ function ComputeOutputVideoDimensions {
             keep_ratio)
                 scaleFactor=1.00
                 ;;
-            aspect)
+            amiga|aspect)
                 scaleFactor=1.15
                 ;;
-            fill1080)
+            scale1080|fill1080)
                 scaleFactor=1.24
                 ;;
-            fill1200)
-                scaleFactor=1.37
+            scale1200|fill1200)
+                scaleFactor=1.38
                 ;;
             *)
                 echo "Error: illegal monitor mode: $monitorMode"
@@ -453,6 +483,32 @@ function ComputeOutputVideoDimensions {
         let outputVideoHeight=outputVideoHeight-1
     fi
 }
+
+function AdjustStdCdxlFrequency {
+    case $audioMode in
+        mono)
+            audioModeVal=1
+        ;;
+        stereo)
+            audioModeVal=2
+        ;;
+        *)
+            echo "Error: cannot adjust std cdxl audio with unknown audio mode: $audioMode."
+            exit
+    esac
+        
+    let oldFrequency=$frequency
+    let divVal=$(($framesPerSecond*4/$audioModeVal))
+    let frequencyFraction=$(( $frequency/ $divVal ))
+    frequency=$(( $frequencyFraction*$divVal ))
+    # frequency is now divisible by FPS and total audio size a multiple of 4
+    if [[ $oldFrequency -ne $frequency ]];then
+        # always chose higher quality frequency if adjustment is required
+        frequency=$(( $frequency+$divVal ))
+        echo "Standard CDXL optimization: adjusted $audioMode frequency from $oldFrequency to $frequency."
+    fi
+}
+
 # MAIN FUNCTION
 if [ "$#" -eq 0 ]; then
     PrintHelpMessage
@@ -481,16 +537,22 @@ conversionTool="ffmpeg" # default
 encodingTool="$AGACONV_ENCODE"
 hcBlackBackgroundOption="black_bkd" # used for requesting black background
 
+fileNameCounter=0
+
 # command line parsing
 for i in "$@"
 do
     case $i in
         --in=*)
+            echo "Option --in is deprecated. Use only filename (this allows to use TAB for auto-complete)."
             inputFileName="${i#*=}"
+            fileNameCounter=$((fileNameCounter+1))
             shift
             ;;
         --out=*)
+            echo "Option --out is deprecated. Use only filename (this allows to use TAB for auto-complete)."
             outputFileName="${i#*=}"
+            fileNameCounter=$((fileNameCounter+1))
             shift
             ;;
         --tmp-dir=*)
@@ -521,16 +583,21 @@ do
             colorMode="${i#*=}"
             shift
             ;;
-        --ff-dither=*)
+        --dither=*)
             ffDitherMode="${i#*=}"
-            shift
-            ;;
-        --ff-bayer-scale=*)
-            ffDitherBayerScale="${i#*=}"
+            hcDitherMode="${i#*=}"
             shift
             ;;
         --hc-dither=*)
+            echo "Option --hc-dither is deprecated. Use option --dither instead."
             hcDitherMode="${i#*=}"
+            ;;
+        --ff-dither=*)
+            echo "Option --ff-dither is deprecated. Use option --dither instead."
+            ffDitherMode="${i#*=}"
+            ;;
+        --ff-bayer-scale=*)
+            ffDitherBayerScale="${i#*=}"
             shift
             ;;
         --hc-propagation=*)
@@ -554,12 +621,21 @@ do
             screenMode="${i#*=}"
             shift
             ;;
+        --color-bits=12)
+            agaconvEncodeColorOption="--color-bits 12"
+            shift
+            ;;
+        --color-bits=24)
+            agaconvEncodeColorOption="--color-bits 24"
+            shift
+            ;;
         --extra=*)
             hcExtraOptions="${i#*=}"
             shift
             ;;
         --fps=*)
             framesPerSecond="${i#*=}"
+            userProvidedFps=yes
             shift
             ;;
         --max-fps=*)
@@ -568,6 +644,7 @@ do
             ;;
         --frequency=*)
             frequency="${i#*=}"
+            userProvidedFrequency=yes
             shift
             ;;
         --monitor-mode=*)
@@ -630,11 +707,23 @@ do
             printVersion
             exit
             ;;
-        --cdxl-info=*)
-            inputFileName="${i#*=}"
-            shift
-            $AGACONV_ENCODE --cdxl-info $inputFileName
-            exit
+        --info)
+            printCdxlInfo=yes
+            ;;
+        --std-cdxl)
+            variableLengthFrames=no
+            agaconvEncodeColorOption="--color-bits 12"
+            agaconvEncodeStdCdxlOption="--std-cdxl"
+            stdCdxl="yes"
+            ;;
+        --std-cdxl24)
+            variableLengthFrames=no
+            agaconvEncodeColorOption="--color-bits 24"
+            agaconvEncodeStdCdxlOption="--std-cdxl"
+            stdCdxl="yes"
+            ;;
+        --debug)
+            DEBUG_OPTION=--debug
             ;;
         --about)
             shift
@@ -646,12 +735,58 @@ do
             PrintHelpMessage
             exit
             ;;
-        *)
-            echo "Error: Unknown command line option: $i"
+        --help-extra)
+            shift
+            PrintHelpExtraMessage
             exit
+            ;;
+        *)
+            if [[ $i == "-*" ]];then
+                echo "Error: Unknown command line option: $i"
+                exit
+            fi
+            prefix=$(expr substr $i 1 1)
+            if [[ $prefix == "-" ]]; then
+                echo "Error: unknown command line option: $i"
+                exit
+            fi
+            fileNameCounter=$((fileNameCounter+1))
+            if [[ $fileNameCounter -eq 1 ]];then
+                inputFileName=$i;
+            elif [[ $fileNameCounter -eq 2 ]];then
+                outputFileName=$i;
+            else
+                echo "Error: more than two file names on command line: $i"
+                exit
+            fi
             ;;
     esac
 done
+
+# check if any file name was provided
+if [[ $fileNameCounter -eq 0 ]];then
+    echo "Error: no file name was provided."
+    exit
+fi
+
+if [[ "$printCdxlInfo" == "yes" ]];then
+    if [[ -z $inputFileName ]];then
+        echo "Error: No input file name provided for option --cdxl-info."
+        exit
+    fi
+    $AGACONV_ENCODE --cdxl-info $inputFileName
+    exit
+fi
+
+# set default values for std cdxl if no user-provided values
+if [[ $stdCdxl == "yes" ]];then
+    if [[ $userProvidedFrequency == "no" ]];then
+        frequency=11025
+    fi
+    if [[ $userProvidedFps == "no" ]];then
+        framesPerSecond=15
+    fi
+fi
 
 # check error propagation range and if supported dithering mode is selected (it is the default)
 if [ $hcPropagation -lt 0 ] || [ $hcPropagation -gt 100 ]; then
@@ -672,18 +807,21 @@ if [ $hcHamQuality -eq 0 ] && [[ $colorMode = "ham8" ]]; then
     exit
 fi
 
-planes=$(log2 $maxColors)
+if [ $maxColors -lt 6 ]; then
+    echo "Error: minimum number of colors is 6, but only ${maxColors} requested."
+    exit
+fi
 
 outputVideoWidth=$width
 
 if [[ -z "$inputFileName" ]]
 then
-    echo "No input file name provided (use option --in=FILENAME)."
+    echo "No input file name provided."
     exit
 fi
 if [[ -z "$outputFileName" ]]
 then
-    echo "No output file name provided (use option --out=FILENAME)."
+    echo "No output file name provided."
     exit
 fi
 
@@ -693,8 +831,6 @@ if [[ ! -f $inputFileName ]]; then
     echo "Error: file $inputFileName does not exist."
     exit
 fi
-
-
 
 EXTENSION="${inputFileName##*.}"
 FILENAME=`basename ${inputFileName}`
@@ -709,7 +845,8 @@ hamMode="no"
 
 case $colorMode in
     ham6)
-        planes=6 # fixed
+        planes=4 # fixed, no including control bits (used for palette size)
+        maxColors="N/A"
         hcBlackBackgroundOption="black_bkd"
         hamMode="yes"
         # remove 24 bit colors option
@@ -721,24 +858,36 @@ case $colorMode in
 
     ham8)
         planes=8 # fixed
+        maxColors="N/A"
         hamMode="yes"
         if [[ $conversionToolUserRequested == "no" ]]; then
              conversionTool="ham_convert"
         fi
         ;;
     ehb)
-        planes=6 # fixed
+        planes=5 # fixed, no including EHB extra plane 
+        maxColors="N/A" # 64 but restricted
         if [[ $hcDiversityUserProvided == "no " ]]; then
             hcDiversity=3 # set default value different to all other modes
         fi
         hcBlackBackgroundOption="black_bkd"
+        # remove 24 bit colors option
         agaconvEncodeColorOption=
         if [[ $conversionToolUserRequested == "no" ]]; then
              conversionTool="ham_convert"
         fi
         ;;
+    aga8|aga7|aga6|aga5|aga4|aga3)
+        planes=$(expr substr $colorMode 4 1)
+        maxColors=$((2**$planes)) # number of planes to the power of 2
+        ;;
+    ocs5|ocs4|ocs3)
+        planes=$(expr substr $colorMode 4 1)
+        maxColors=$((2**$planes)) # number of planes to the power of 2
+        agaconvEncodeColorOption="--color-bits 12"
+        ;;
     normal)
-        # nothing to do
+        planes=$(log2 $maxColors)
         ;;
     *)
         echo "Error: unknown color-mode: $colorMode."
@@ -757,7 +906,7 @@ if [[ $conversionTool == "ham_convert" ]]; then
             # nothing to do
             ;;
         *)
-            echo "Error: unknown dither option: $hcDither."
+            echo "Error: unknown dither option for ham_convert: $hcDither."
             exit
     esac
 
@@ -840,7 +989,9 @@ if [[ $conversionTool == "ham_convert" ]]; then
             hcColorModeOption="${colorMode}_${hcHamQualityOption}"
         fi
     elif [[ $colorMode == "ehb" ]]; then
-        hcColorModeOption="ehb"
+        hcColorModeOption="ehb_animation"
+        # only for EHB exists a special option in ham_convert. This variable remains unset otherwise.
+        hcAnimOptions=
     fi
 elif [[ $conversionTool == "ffmpeg" ]]; then
     case $ffDitherMode in
@@ -856,11 +1007,17 @@ elif [[ $conversionTool == "ffmpeg" ]]; then
                     echo "Error: ffmpeg dither bayer scale must be within 0..5 (provided: $ffDitherbayerScale)"
                     exit
             esac
+            ;;
+        *)
+            echo "Error: unknown dither option for ffmpeg: $ffDitherMode"
+            exit
+            ;;
     esac
 fi
 
 hcExtraOptions="$hcBlackBackgroundOption $hcDitherModeOption $hcDiversityOption $hcQuantOption $hcPropagationOption norle nopng"
 
+echo "Planes: $planes, maxColors=$maxColors"
 ComputeVideoFps
 
 # determine FPS to use
@@ -934,6 +1091,10 @@ else
     ComputeOutputVideoDimensions
 fi
 
+if [[ "$stdCdxl" == "yes" ]];then
+    AdjustStdCdxlFrequency
+fi
+
 if [[ "$dryRun" == "yes" ]]; then
     echo
     echo "Performing dry-run. Only computing values."
@@ -953,7 +1114,7 @@ fi
 
 echo
 echo "----------------------------------------------"
-echo "AGAConv-script Conversion Summary"
+echo "AGAConv (script) Conversion Summary"
 echo "----------------------------------------------"
 printf "Input video dimensions : %4d x %4d\n" "$inputVideoWidth" "$inputVideoHeight"
 printf "Output video dimensions: %4d x %4d\n" "$outputVideoWidth" "$outputVideoHeight"

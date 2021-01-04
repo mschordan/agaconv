@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,19 +24,17 @@
 using namespace std;
 
 ByteSequence::ByteSequence():
-  debug(false),
-  dataSize(0)
+  debug(false)
 {
 }
 
 ByteSequence::ByteSequence(ULONG size):
-  debug(false),
-  dataSize(0)
+  debug(false)
 {
   for(ULONG i=0;i<size;i++) {
     add(0);
   }
-  assert(dataSize==size);
+  assert(getDataSize()==size);
 }
 
 // nothing todo, all data default deallocated
@@ -57,13 +55,11 @@ void ByteSequence::setByte(ULONG offset, UBYTE byte) {
 }
 
 void ByteSequence::removeData() {
-  dataSize=0;
   data.clear();
 }
 
 void ByteSequence::add(UBYTE byte) {
   data.push_back((UBYTE)byte);
-  dataSize++;
 }
 
 void ByteSequence::readData(ULONG dataSize0) {
@@ -87,13 +83,13 @@ void ByteSequence::readAdjustPadding(uint32_t readDataSize) {
 }
 
 void ByteSequence::writeData() {
-  for(ULONG i=0;i<dataSize;i++) {
+  for(ULONG i=0;i<getDataSize();i++) {
     outFile->put(data[i]);
   }
 }
 
 void ByteSequence::printData() {
-  for(ULONG i=0;i<dataSize;i++) {
+  for(ULONG i=0;i<getDataSize();i++) {
     if(i!=0)
       cout<<", ";
     cout<<std::hex<<"0x"<<+data[i];

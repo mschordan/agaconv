@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -71,7 +71,7 @@ Options CommandLineParser::parse(int argc0, char **argv0) {
   string commandName=argv[0];
   string helpText="Usage: "+commandName+" [--quiet] [--status] [--cdxl-info] [--anim-chunk-info] [--ilbm-info] [--detailed] ";
   helpText+="[--cdxl-encode] [--cdxl-info-all] ";
-  helpText+="[--frequency NUMBER] [--cdxl-24bit-colors] [--anim-play-rate NUMBER] [--sndfile PCMFILE | --pcm-file PCMFILE] [--audio-data-type u8|s8] [--audio-mode mono|stereo] [--gfx-mode lores|hires|superhires] [--inject-dpan] [--verbose] [--no-anim-padding-fix] [--cdxl-padding-size NUMBER] [--version] INFILE [OUTFILE]";
+  helpText+="[--frequency NUMBER] [--color-bits NUMBER] [--anim-play-rate NUMBER] [--sndfile PCMFILE | --pcm-file PCMFILE] [--audio-data-type u8|s8] [--audio-mode mono|stereo] [--gfx-mode lores|hires|superhires] [--inject-dpan] [--no-anim-padding-fix] [--cdxl-padding-size NUMBER] [--optimize yes|no] [--std-cdxl] [--fixed-planes NUM] [--version] INFILE [OUTFILE]";
   if(argc <= 1) {
     cout << helpText <<endl;
     exit(0);
@@ -85,8 +85,8 @@ Options CommandLineParser::parse(int argc0, char **argv0) {
       cout << helpText <<endl;
       exit(0);
     } else if(option("version")) {
-      cout<<"AGAConv version "<<version<<endl;
-      cout<<"Copyright (C) 2019, 2020 Markus Schordan"<<endl;
+      cout<<"agaconv-encode version "<<version<<endl;
+      cout<<"Copyright (C) 2019-2021 Markus Schordan"<<endl;
       cout<<"License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>."<<endl;
       cout<<"This is free software: you are free to change and redistribute it."<<endl;
       cout<<"There is NO WARRANTY, to the extent permitted by law."<<endl;
@@ -99,9 +99,20 @@ Options CommandLineParser::parse(int argc0, char **argv0) {
       options.writeCdxl=true;
     } else if(option("cdxl-info-all")) {
       options.cdxlDecode=true;
-    } else if(option("cdxl-24bit-colors")) {
-      cout<<"INFO: cdxl-24bit-colors selected."<<endl;
-      options.colorSize=Options::COL_24BIT;
+    } else if(option("color-bits")) {
+      inc();
+      int colBits=std::stoi(argv[argi]);
+      switch(colBits) {
+      case 12:
+        options.colorSize=Options::COL_12BIT;
+        break;
+      case 24:
+        options.colorSize=Options::COL_24BIT;
+        break;
+      default:
+        cerr<<"Error: unsupported color format of "<<colBits<<" bits selected."<<endl;
+        exit(1);
+      }
     } else if(option("ilbm-info")) {
       options.ilbmInfo=true;
     } else if(option("detailed")) {
@@ -110,16 +121,28 @@ Options CommandLineParser::parse(int argc0, char **argv0) {
       options.status=true;
     } else if(option("quiet")) {
       options.quiet=true;
-    } else if(option("verbose")) {
-      options.verbose=true;
     } else if(option("anim-chunk-info")) {
       options.chunkInfo=true;
       options.readAnim=true;
     } else if(option("no-anim-padding-fix")) {
       options.paddingFix=false;
+    } else if(option("optimize")) {
+      inc();
+      string option=argv[argi];
+      if(option=="yes") {
+        options.optimize=true;
+      } else if (option=="no") {
+        options.optimize=false;
+      } else {
+        cerr<<"Error: unknown selection "<<option<<" for --optimize."<<endl;
+        exit(1);
+      }
     } else if(option("fps")) {
       inc();
       options.fps=std::stol(argv[argi]);
+    } else if(option("fixed-planes")) {
+      inc();
+      options.fixedPlanes=std::stoi(argv[argi]);
     } else if(option("cdxl-padding-size")) {
       inc();
       options.paddingSize=std::stol(argv[argi]);
@@ -133,6 +156,8 @@ Options CommandLineParser::parse(int argc0, char **argv0) {
         cerr<<"Error: unsupported padding size: "<<options.paddingSize<<endl;
         exit(1);
       }
+    } else if(option("std-cdxl")) {
+      options.stdCdxl=true;
     } else if(option("audio-mode")) {
       inc();
       string audioMode=argv[argi];
@@ -184,7 +209,6 @@ Options CommandLineParser::parse(int argc0, char **argv0) {
       ResMapType::iterator i=resModeMap.find(modeName);
       if(i!=resModeMap.end()) {
         options.resMode=(*i).second;
-        //cout<<"DEBUG: options.resMode="<<options.resMode<<endl;
       } else {
         cerr<<"Error: unknown resolution mode: "<<modeName<<endl;
         exit(1);
@@ -192,14 +216,14 @@ Options CommandLineParser::parse(int argc0, char **argv0) {
     } else if(option("debug")) {
       options.debug=true;
     } else {
-        //cout<<"DEBUG: filenames: "<<fileNames<<":"<<argv[argi]<<endl;
       switch(fileNames) {
       case 0: options.inFileName=argv[argi];fileNames++;break;
       case 1: options.outFileName=argv[argi];fileNames++;break;
       default: 
-        cerr<<"Error: too many file names on command line."<<endl;
+        cerr<<"Error: too many file names on command line ("<<fileNames<<")"<<endl;
         cerr<<"inFile: "<<options.inFileName<<endl;
         cerr<<"outFile: "<<options.outFileName<<endl;
+        cerr<<"current file name: "<<argv[argi]<<endl;
         exit(1);
       }
       if(options.inFileName[0]=='-') {
@@ -233,6 +257,9 @@ Options CommandLineParser::parse(int argc0, char **argv0) {
   if(!options.checkConsistency()) {
     cout<<"Error: inconsistent command line options."<<endl;
     exit(1);
+  }
+  if(options.optimize==false) {
+    cout<<"Note: disabling empty bitplane filtering."<<endl;
   }
   return options;
 }

@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,12 +47,16 @@ class IffILBMChunk : public IffChunk {
   void setAnimStartPos(uint32_t animStartPos);
   uint32_t getAnimStartPos();
   bool hasBMHDChunk();
+  bool hasCAMGChunk();
+  bool hasCMAPChunk();
   bool hasBODYChunk();
   int uncompressedBODYLength();
   int compressedBODYLength();
   bool uncompressBODYChunk();
   IffChunk* getChunkByName(std::string name);
   IffBMHDChunk* getBMHDChunk();
+  IffCAMGChunk* getCAMGChunk();
+  IffCMAPChunk* getCMAPChunk();
   IffBODYChunk* getBODYChunk();
   /*
     int getIndexValue(int x, int y);

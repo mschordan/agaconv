@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -55,22 +55,21 @@ void CDXLPalette::readChunk() {
 }
 
 void CDXLPalette::writeChunk() {
+  if(Chunk::debug) cout<<"DEBUG: writeChunk: writing palette with "<<rgbColors.size()<<" colors."<<endl;
   switch(_colorMode) {
   case COL_12BIT:
     for (auto rgbCol : rgbColors) {
       UWORD word12BitColor=rgbCol.get12BitColor();
       writeUWord(word12BitColor);
+      //cout<<rgbCol.toHexString()<<":"<<hex<<word12BitColor<<dec<<" ";
     }
+    //cout<<endl;
     break;
   case COL_24BIT:
-    //cout <<"DEBUG: writing palette with "<<rgbColors.size()<<" colors."<<endl;
     for (auto rgbCol : rgbColors) {
-      UBYTE red=rgbCol.getRed();
-      writeUBYTE(red);
-      UBYTE green=rgbCol.getGreen();
-      writeUBYTE(green);
-      UBYTE blue=rgbCol.getBlue();
-      writeUBYTE(blue);
+      writeUBYTE(rgbCol.getRed());
+      writeUBYTE(rgbCol.getGreen());
+      writeUBYTE(rgbCol.getBlue());
     }
     break;
   default:
@@ -95,14 +94,10 @@ void CDXLPalette::addColor(RGBColor col) {
 }
 
 void CDXLPalette::addColor(UBYTE red, UBYTE green, UBYTE blue) {
-  //UBYTE red4=RGBColor::convert8BitTo4Bit(red);
-  //UBYTE green4=RGBColor::convert8BitTo4Bit(green);
-  //UBYTE blue4=RGBColor::convert8BitTo4Bit(blue);
-  //colors.push_back((((UWORD)((0x0f)&red4))<<8)|(green4<<4)|(0x0f&blue4));
-  // colors are always stored as 24bit RGB colors
+  // colors are always stored as 24bit RGB colors (but not in file if not selected)
   switch(_colorMode) {
   case COL_12BIT:
-  case COL_24BIT:
+  case COL_24BIT: 
     rgbColors.push_back(RGBColor(red,green,blue));
     break;
   default:
@@ -111,10 +106,10 @@ void CDXLPalette::addColor(UBYTE red, UBYTE green, UBYTE blue) {
   }
 }
 
+// this method is only relevant when *reading* 12 bit palette and is not supported yet
 void CDXLPalette::addColor(CDXLColorType color) {
-  cerr<<"Warning: adding 12Bit colors to palette not supported (adding dummy black RGB color!)."<<endl;
-  addColor(RGBColor(0,0,0));
-  //rgbColors.push_back(color);
+  cerr<<"Error: adding 12Bit colors to palette not supported."<<endl;
+  exit(1);
 }
 
 void CDXLPalette::importColors(IffCMAPChunk* cmap) {
@@ -124,11 +119,11 @@ void CDXLPalette::importColors(IffCMAPChunk* cmap) {
   }
 }
 
-void CDXLPalette::setColorMode(CDXLPalette::COLOR_SIZE colorMode) {
+void CDXLPalette::setColorMode(CDXLPalette::COLOR_DEPTH colorMode) {
   _colorMode=colorMode;
 }
 
-CDXLPalette::COLOR_SIZE CDXLPalette::getColorMode() {
+CDXLPalette::COLOR_DEPTH CDXLPalette::getColorMode() {
   return _colorMode;
 }
 

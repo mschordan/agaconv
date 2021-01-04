@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -64,8 +64,6 @@ ULONG CDXLFrame::getLength() {
   if(audio)
     length+=audio->getDataSize();
   ULONG paddingBytes=header.getTotalPaddingBytes();
-  //cout<<"DEBUG: getLength: PaddingSize    : "<<header.getPaddingSize()<<endl;
-  //cout<<"DEBUG: getLength: #PaddingBytes  : "<<paddingBytes<<endl;
   length+=paddingBytes;
   return length;
 }
@@ -86,19 +84,15 @@ ULONG CDXLFrame::getAudioPaddingBytes() {
 void CDXLFrame::readChunk() {
   header.setFile(file);
   header.readChunk();
-  cout<<"P2: palette size:"<<header.getPaletteSize()<<endl;
   palette.setFile(file);
   palette.setDataSize(header.getPaletteSize());
   
-  CDXLPalette::COLOR_SIZE colorMode;
-  if(header.getColorBitsFlag()) {
-    colorMode=CDXLPalette::COL_24BIT;
-    //cout<<"DEBUG: 24 bit color mode."<<endl;
+  if(!header.getColorBitsFlag()) {
+    palette.setColorMode(CDXLPalette::COL_12BIT);
   } else {
-    //cout<<"DEBUG: 12 bit color mode."<<endl;
-    colorMode=CDXLPalette::COL_12BIT;
+    palette.setColorMode(CDXLPalette::COL_24BIT);
   }
-  palette.setColorMode(colorMode);
+
   palette.readChunk();
   //ULONG paddingSize=header.getPaddingSize();
   //cout<<"DEBUG: Detected padding size: "<<paddingSize<<endl;
@@ -197,7 +191,8 @@ void CDXLFrame::importVideo(IffILBMChunk* ilbm) {
     source=iffVideo->address(0);
   }
   UWORD planeSize=h*lineLengthInBytes;
-  // reserve bytes for all bitplanes as one contingueos memory
+  // reserve bytes for all bitplanes as one contigeous memory
+  // this loop converts interleaved ILBM to bitplanes
   ByteSequence* newBitPlanarVideo=new ByteSequence(planeSize*planes);
   for(UWORD y=0;y<h;y++) {
     for(UWORD p=0;p<planes;p++) {

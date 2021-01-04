@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -104,6 +104,8 @@ void IffILBMChunk::readChunk() {
     } else {
       iffChunk=new IffUnknownChunk(nextChunkName);
     }
+    if(IffChunk::debug) if(iffChunk!=nullptr) cout<<"Found: "<<nextChunkName<<endl;
+    assert(iffChunk);
     iffChunk->setFile(this->file);
     iffChunk->setOutFile(this->outFile);
     iffChunk->readChunk();
@@ -196,12 +198,20 @@ bool IffILBMChunk::insertBeforeChunk(IffChunk* newChunk, string chunkName) {
   return false;
 }
 
-bool IffILBMChunk::hasBODYChunk() {
-  return getBODYChunk()!=nullptr;
-}
-
 bool IffILBMChunk::hasBMHDChunk() {
   return getBMHDChunk()!=nullptr;
+}
+
+bool IffILBMChunk::hasCAMGChunk() {
+  return getCAMGChunk()!=nullptr;
+}
+
+bool IffILBMChunk::hasCMAPChunk() {
+  return getCMAPChunk()!=nullptr;
+}
+
+bool IffILBMChunk::hasBODYChunk() {
+  return getBODYChunk()!=nullptr;
 }
 
 bool IffILBMChunk::uncompressBODYChunk() {
@@ -220,10 +230,6 @@ bool IffILBMChunk::uncompressBODYChunk() {
   return false;
 }
 
-int IffILBMChunk::compressedBODYLength() {
-  return getBODYChunk()->compressedLength();
-}
-
 int IffILBMChunk::uncompressedBODYLength() {
   return getBODYChunk()->uncompressedLength();
 }
@@ -237,10 +243,18 @@ IffChunk* IffILBMChunk::getChunkByName(std::string name) {
   return 0;
 }
 
-IffBODYChunk* IffILBMChunk::getBODYChunk() {
-  return dynamic_cast<IffBODYChunk*>(getChunkByName("BODY"));
-}
-
 IffBMHDChunk* IffILBMChunk::getBMHDChunk() {
   return dynamic_cast<IffBMHDChunk*>(getChunkByName("BMHD"));
+}
+
+IffCAMGChunk* IffILBMChunk::getCAMGChunk() {
+  return dynamic_cast<IffCAMGChunk*>(getChunkByName("CAMG"));
+}
+
+IffCMAPChunk* IffILBMChunk::getCMAPChunk() {
+  return dynamic_cast<IffCMAPChunk*>(getChunkByName("CMAP"));
+}
+
+IffBODYChunk* IffILBMChunk::getBODYChunk() {
+  return dynamic_cast<IffBODYChunk*>(getChunkByName("BODY"));
 }

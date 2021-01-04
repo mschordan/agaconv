@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,7 +45,6 @@ struct Options {
   bool firstChunkInfo=false;
   bool injectDPANChunk=false;
   bool paddingFix=true;
-  bool verbose=false;
   bool readAnim=false;
   bool readCdxl=false;
   bool readIlbm=false;
@@ -53,7 +52,7 @@ struct Options {
   bool writeCdxl=false;
   bool writeIlbm=false;
   bool stereo=false;
-  enum COLOR_SIZE { COL_12BIT, COL_24BIT } colorSize=COL_12BIT;
+  enum COLOR_DEPTH { COL_12BIT, COL_24BIT } colorSize=COL_12BIT;
   long fps=0;
   long playRate=0;
   char* inFileName=nullptr;
@@ -72,6 +71,9 @@ struct Options {
   PADDING_TYPE paddingMode;
   bool debug=false;
   long paddingSize=2;
+  bool optimize=true; // eliminates empty bitplanes, remaps colors
+  bool stdCdxl=false;
+  uint32_t fixedPlanes=0; // if different to 0, then fixed number of planes is requested
 };
 
 // use options object globally;

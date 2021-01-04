@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,6 +50,14 @@ void IffCMAPChunk::setColor(int idx, RGBColor col) {
   address[2]=col.getBlue();
 }
 
+RGBColor IffCMAPChunk::getColor(int idx) {
+  checkColorIndex(idx);
+  UBYTE* address=&data[0]+idx*3;
+  return RGBColor(address[0],
+                  address[1],
+                  address[2]
+                  );
+}
 
 IffCMAPChunk::IffCMAPChunk() {
   name="CMAP";
@@ -81,12 +89,6 @@ string IffCMAPChunk::paletteToString() {
     ss<<i<<":"<<c.toHexString();
   }
   return ss.str();
-}
-
-RGBColor IffCMAPChunk::getColor(int idx) {
-  checkColorIndex(idx);
-  int offset=idx*3;
-  return RGBColor(data.begin()+offset);
 }
 
 int IffCMAPChunk::numberOfColors() {

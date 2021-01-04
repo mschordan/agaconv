@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,8 +21,8 @@
 #include <iostream>
 
 void IffDataChunk::removeData() {
-  dataSize=0;
   data.clear();
+  dataSize=0;
 }
 
 void IffDataChunk::add(UBYTE byte) {
@@ -36,15 +36,16 @@ void IffDataChunk::readData(ULONG dataSize0) {
     int getByte=file->get();
     UBYTE byte=(UBYTE)getByte;
     data.push_back(byte);
+    dataSize++;
   }
-  readAdjustPadding(dataSize);
+  readAdjustPadding(dataSize0);
   if(IffChunk::debug) cout<<"DEBUG: readDataChunk: done."<<dataSize<<endl;
 }
 
 void IffDataChunk::readChunk() {
   if(IffChunk::debug) cout<<"DEBUG: readChunk DataChunk start."<<endl;
   readChunkSize();
-  if(IffChunk::debug) cout<<"DEBUG: readChunk: size"<<getDataSize()<<endl;
+  if(IffChunk::debug) cout<<"DEBUG: readChunk: size: "<<getDataSize()<<endl;
   readData(getDataSize());
 }
 
@@ -81,3 +82,7 @@ IffDataChunkIterator IffDataChunk::begin() {
 IffDataChunkIterator IffDataChunk::end() {
   return data.end();
 }
+
+//size_t IffDataChunk::getDataSize() {
+//  return data.size();
+//}

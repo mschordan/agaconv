@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 class RGBColor {
  public:
   // reads 3 color bytes from BYTE stream in order RGB
-  RGBColor(IffDataChunkIterator ptr);
+  //  RGBColor(IffDataChunkIterator ptr);
   // default constructor for default initializer in containers
   RGBColor();
   // color from three BYTE values

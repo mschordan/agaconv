@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,9 +57,11 @@ class PngLoader : public FrameLoader {
   IffBMHDChunk* createIffBMHDChunk();
   IffBODYChunk* createIffBODYChunk();
 
+  void optimizePngPalette();
   UBYTE getOptimizedBitDepth();
+  std::string colorTypeToString();
 
- protected:
+protected:
   //! Png is stored as array of pointers, where each pointer refers to one scanline.
   //! If paletted, each byte contains an index value, which refers to the respective color in the palette.
   void readPngFile(char *filename);
@@ -78,8 +80,7 @@ class PngLoader : public FrameLoader {
   int getByteWidth();
   void allocateIntermediateBitplanes(char**& bitplanes, int num);
   void freeIntermediateBitplanes(char** bitplanes, int num);
-  void optimizePngPalette();
-
+  
 };
 
 #endif

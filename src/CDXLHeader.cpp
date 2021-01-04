@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,10 +19,12 @@
 #include <sstream>
 #include <string>
 #include <iostream>
+#include <iomanip>
 #include <cassert>
 #include "CDXLHeader.hpp"
 #include "Options.hpp"
 #include "CDXLFrame.hpp"
+#include "Util.hpp"
 
 using namespace std;
 
@@ -33,7 +35,7 @@ CDXLHeader::CDXLHeader()
   info.planeArrangement=PA_UNDEFINED;
   modes.resolutionModes=0;
   modes.colorBitsFlag=0;
-  modes.paddingModes=0;
+  modes.killEHBFlag=0;
 }
 
 CDXLHeader::CDXLHeader(IffBMHDChunk* bmhd, IffCMAPChunk* cmap, IffCAMGChunk* camg):CDXLHeader() {
@@ -44,26 +46,18 @@ void CDXLHeader::initialize(IffBMHDChunk* bmhd, IffCMAPChunk* cmap, IffCAMGChunk
   videoWidth=bmhd->getWidth();
   videoHeight=bmhd->getHeight();
   numberOfBitplanes=bmhd->getNumPlanes();
-  if(modes.colorBitsFlag) {
-    // 24 bit colors
-    paletteSize=cmap->numberOfColors()*3;
-  } else {
-    // 12 bit colors
-    paletteSize=cmap->numberOfColors()*2;
-  }
+  paletteSize=cmap->numberOfColors()*getColorBytes();
   if(camg->isHam()) {
     info.encoding=HAM;
-    info.planeArrangement=BIT_LINE; // same as in ilbm
+    info.planeArrangement=BIT_PLANAR;
   } else {
     info.encoding=RGB;
-    info.planeArrangement=BIT_LINE; // same as in ilbm
+    info.planeArrangement=BIT_PLANAR;
   }
   modes.resolutionModes=Options::GFX_LORES; // default
   if(camg->isHires()) {
-    //cout<<"DEBUG: setting resolution mode to HIRES."<<endl;
     modes.resolutionModes=Options::GFX_HIRES;
   } else if(camg->isSuperHires()) {
-    //cout<<"DEBUG: setting resolution mode to SUPERHIRES."<<endl;
     modes.resolutionModes=Options::GFX_SUPERHIRES;
   }
   if(camg->isLace()) {
@@ -95,7 +89,7 @@ string CDXLInfo::encodingToString() {
 
 string CDXLGfxModes::toString() {
   stringstream ss;
-  ss<<+paddingModes<<":"<<colorBitsFlagToString()<<":"<<+resolutionModes<<endl;
+  ss<<killEHBFlagToString()<<":"<<colorBitsFlagToString()<<":"<<+resolutionModes<<endl;
   return ss.str();
 }
 
@@ -108,13 +102,32 @@ string CDXLInfo::stereoToString() {
 
 string CDXLGfxModes::colorBitsFlagToString() {
   if(colorBitsFlag==1)
-    return "24Bit";
+    return "24bit";
   else
-    return "12Bit";
+    return "12bit";
 }  
 
+string CDXLGfxModes::killEHBFlagToString() {
+  if(killEHBFlag==1)
+    return "1";
+  else
+    return "0";
+}  
+
+string CDXLGfxModes::resolutionModesToString() {
+  switch(resolutionModes) {
+  case Options::GFX_UNSPECIFIED: return "unspecified";
+  case Options::GFX_LORES: return "lores";
+  case Options::GFX_HIRES: return "hires";
+  case Options::GFX_SUPERHIRES: return "superhires";
+    // intentionally empty to trigger compiler warning
+  }
+  cerr<<"Internal error: wrong resolution code:"<<+resolutionModes<<endl;
+  exit(1);
+}
+  
 UBYTE CDXLGfxModes::getUBYTE() {
-  UBYTE byte=((UBYTE)((UBYTE)(paddingModes<<5))|((UBYTE)(colorBitsFlag<<4))|((UBYTE)resolutionModes));
+  UBYTE byte=((UBYTE)((UBYTE)(killEHBFlag<<5))|((UBYTE)(colorBitsFlag<<4))|((UBYTE)resolutionModes));
   return byte;
 }
 
@@ -141,30 +154,26 @@ string CDXLInfo::toString() {
 void CDXLHeader::readChunk() {
   fileType=readUBYTE();
   UBYTE byte=readUBYTE();
-  //cout<<"DEBUG: CDXLHeader::readChunk: RAW: "<<+byte<<endl;
   info.encoding=byte&0b00000111;
   info.stereo=(byte&0b00010000)>>4;
   info.planeArrangement=(byte&0b11100000)>>5;
-  //cout<<"DEBUG: CDXLHeader::readChunk: pa:"<<+info.planeArrangement<<endl;
-  //cout<<"DEBUG: CDXLHeader::readChunk: COMP: "<<+info.getUBYTE()<<":"<<info.toString()<<endl;
 
   currentChunkSize=readULONG();
   previousChunkSize=readULONG();
-  reserved1=readUWORD();
-  currentFrameNumber=readUWORD();
+  currentFrameNumber=readULONG();
   videoWidth=readUWORD();
   videoHeight=readUWORD();
   numberOfBitplanes=readUWORD();
   paletteSize=readUWORD();
   channelAudioSize=readUWORD();
   frequency=readUWORD();
-  //reserved2=readUWORD();
   fps=readUBYTE();
   UBYTE byte2=readUBYTE();
-  modes.resolutionModes=byte2&0b00001111;
-  modes.colorBitsFlag=(byte2&0b00010000)>>4;
+  modes.resolutionModes=byte2&0b00001111; // bits 0-3
+  modes.colorBitsFlag=(byte2&0b00010000)>>4; // bit 4
+  modes.killEHBFlag=(byte2&0b00100000)>>5; // bit 5
   padding=readUWORD();
-  modes.paddingModes=(padding>>12); // TODO: store padding modes in correct field
+  setPaddingModes(padding>>12);
   reserved3=readUWORD();
 }
 
@@ -177,8 +186,7 @@ void CDXLHeader::writeChunk() {
   writeUBYTE(info.getUBYTE());
   writeULONG(currentChunkSize);
   writeULONG(previousChunkSize);
-  writeUWORD(reserved1);
-  writeUWORD(currentFrameNumber);
+  writeULONG(currentFrameNumber);
   writeUWORD(videoWidth);
   writeUWORD(videoHeight);
   writeUWORD(numberOfBitplanes);
@@ -190,16 +198,12 @@ void CDXLHeader::writeChunk() {
     writeUWORD(channelAudioSize);
   }
   writeUWORD(frequency);
-  //writeUWORD(reserved2);
   writeUBYTE(fps);
-  UBYTE modesWithoutOldPadding=modes.getUBYTE()&0b00011111;
-  //cout<<"DEBUG: Writing gfx modes (info2): 0x"<<std::hex<<+modesWithoutOldPadding<<std::dec<<endl;
-  writeUBYTE(modesWithoutOldPadding); // TODO: change paddingModes to separate field in padding
-  UWORD paddingSizes=(UWORD)((modes.paddingModes<<12)+(getColorPaddingBytes()<<8)+(getVideoPaddingBytes()<<4)+getAudioPaddingBytes());
-  //cout<<"DEBUG: padding WORD: 0x"<<std::hex<<+paddingSizes<<std::dec<<endl;
+  UBYTE modesWithoutReserved=modes.getUBYTE()&0b00111111; // includes kill ehb bit 5 now
+  writeUBYTE(modesWithoutReserved);
+  UWORD paddingSizes=(UWORD)((getPaddingModes()<<12)+(getColorPaddingBytes()<<8)+(getVideoPaddingBytes()<<4)+getAudioPaddingBytes());
   writeUWORD(paddingSizes);
   writeUWORD(0); // reserved3
-  //cout<<"DEBUG:----"<<endl;
 }
 
 string CDXLHeader::toString() {
@@ -210,24 +214,30 @@ string CDXLHeader::toString() {
   ss<<"Plane arrangement: "<<info.planeArrangementToString()<<endl;
   ss<<"Current chunk size: "<<currentChunkSize<<endl;
   ss<<"Previous chunk size: "<<previousChunkSize<<endl;
-  ss<<"reserved WORD: "<<reserved1<<endl;
   ss<<"Current frame number: "<<currentFrameNumber<<endl;
   ss<<"Video width: "<<videoWidth<<endl;
   ss<<"Video height: "<<videoHeight<<endl;
   ss<<"Number of bitplanes: "<<numberOfBitplanes<<endl;
   ss<<"[Video size]: "<<getVideoSize()<<endl;
   ss<<"Palette size: "<<paletteSize<<endl;
+  ss<<"[Number of colors]: "<<getNumberOfColors()<<endl;
+  ss<<"[Bytes per color]: "<<getColorBytes()<<endl;
   ss<<"Channel Audio size: "<<getChannelAudioSize()<<endl;
   ss<<"Total Audio size: "<<getTotalAudioSize()<<endl;
   ss<<"Frequency: "<<frequency<<endl;
-  //ss<<"reserved WORD: "<<reserved2<<endl;
   ss<<"Fps: "<<+fps<<endl;
-  ss<<"Modes.resolutionModes: "<<+modes.resolutionModes<<endl;
-  ss<<"Modes.ColorBitsFlag: "<<modes.colorBitsFlagToString()<<endl;
-  ss<<"Modes.paddingModes: "<<+modes.paddingModes<<endl;
-  ss<<"Padding: 0x"<<hex<<padding<<dec<<endl;
+  ss<<"Resolution mode: "<<modes.resolutionModesToString()<<endl;
+  ss<<"Color bits: "<<modes.colorBitsFlagToString()<<endl;
+  ss<<"KillEHBFlag: "<<modes.killEHBFlagToString()<<endl;
+  ss<<"[paddingMode]: "<<paddingModesToString()<<endl;
+  ss<<"Padding: 0x"
+    <<std::hex<<std::showbase // show the 0x prefix
+    <<std::setfill('0')
+    <<std::internal // fill between the prefix and the number
+    <<std::setw(3)
+    <<(padding&0xfff)<<std::dec<<endl;
   ss<<"reserved WORD: "<<reserved3<<endl;
-  ss<<"isConsistent: "<<(isConsistent()?"Yes":"No")<<endl;
+  ss<<"[isConsistent]: "<<(isConsistent()?"Yes":"No")<<endl;
   return ss.str();
 }
 
@@ -272,19 +282,47 @@ bool CDXLHeader::getColorBitsFlag() {
   return modes.colorBitsFlag;
 }
 
+void CDXLHeader::setKillEHBFlag(bool flag) {
+  modes.killEHBFlag=(short)flag;
+}
+
+bool CDXLHeader::getKillEHBFlag() {
+  return modes.killEHBFlag;
+}
+
 void CDXLHeader::setChannelAudioSize(ULONG size) {
   channelAudioSize=size;
 }
 
-void CDXLHeader::setFrameNr(UWORD nr) {
+void CDXLHeader::setFrameNr(ULONG nr) {
   currentFrameNumber=nr;
 }
 
 UWORD CDXLHeader::getNumberOfBitplanes() {
   return numberOfBitplanes;
 }
+
+void CDXLHeader::setNumberOfBitplanes(UWORD num) {
+  numberOfBitplanes=num;
+}
+
+UWORD CDXLHeader::getColorBytes() {
+  if(modes.colorBitsFlag)
+    return 3;
+  else
+    return 2;
+}
+
 UWORD CDXLHeader::getPaletteSize() {
   return paletteSize;
+}
+
+void CDXLHeader::setPaletteSize(UWORD size) {
+  paletteSize=size;
+}
+
+UWORD CDXLHeader::getNumberOfColors() {
+  return getPaletteSize()/getColorBytes();
 }
 
 UWORD CDXLHeader::getChannelAudioSize() {
@@ -304,8 +342,7 @@ UWORD CDXLHeader::getTotalAudioSize() {
 }
 
 ULONG CDXLHeader::getVideoSize() {
-  // TODO: compute WORD alignment in getVideoSize?
-  return (videoWidth*videoHeight/8)*numberOfBitplanes;
+  return (Util::wordAlignedLengthInBytes(videoWidth)*videoHeight)*numberOfBitplanes;
 }
 
 ULONG CDXLHeader::getPreviousFrameSize() {
@@ -324,7 +361,7 @@ UWORD CDXLHeader::getVideoHeight() {
   return videoHeight;
 }
 
-UWORD CDXLHeader::getCurrentFrameNr() {
+ULONG CDXLHeader::getCurrentFrameNr() {
   return currentFrameNumber;
 }
 
@@ -344,45 +381,54 @@ void CDXLHeader::setResolutionModes(UBYTE modes) {
   this->modes.resolutionModes=modes;
 }
 
-void CDXLHeader::setPaddingModes(UBYTE modes) {
-  this->modes.paddingModes=modes;
+void CDXLHeader::setPaddingModes(UBYTE mode) {
+  this->paddingModes=mode;
 }
 
 UBYTE CDXLHeader::getPaddingModes() {
-  return this->modes.paddingModes;
+  return this->paddingModes;
 }
 
 ULONG CDXLHeader::getPaddingSize() {
-  switch(this->modes.paddingModes) {
+  switch(this->getPaddingModes()) {
   case 0: return 0;
   case 1: return 1;
   case 2: return 2;
   case 3: return 4;
   case 4: return 8;
   default:
-    cerr<<"Error: unknown padding mode: "<<modes.paddingModes<<endl;
+    cerr<<"Error: unknown padding mode: "<<this->getPaddingModes()<<endl;
     exit(1);
   }
 }
 void CDXLHeader::setPaddingSize(ULONG paddingSize) {
   switch(paddingSize) {
-  case 0: modes.paddingModes=0;break;
-  case 1: modes.paddingModes=1;break;
-  case 2: modes.paddingModes=2;break;
-  case 4: modes.paddingModes=3;break;
-  case 8: modes.paddingModes=4;break;
+  case 0: setPaddingModes(0);break;
+  case 1: setPaddingModes(1);break;
+  case 2: setPaddingModes(2);break;
+  case 4: setPaddingModes(3);break;
+  case 8: setPaddingModes(4);break;
   default:
     cerr<<"Error: unknown padding size: "<<paddingSize<<endl;
     exit(1);
   }
 }
 
+string CDXLHeader::paddingModesToString() {
+  stringstream ss;
+  if(getPaddingSize()==0) {
+    return "unspecified";
+  } else {
+    ss<<getPaddingSize()*8<<"bit aligned";
+    return ss.str();
+  }
+}
+
 bool CDXLHeader::isConsistent() {
-  ULONG chunkSize=this->getLength()+getPaletteSize()+getVideoSize()+getTotalAudioSize();
-  ULONG padding=getColorPaddingBytes()+getVideoPaddingBytes()+getAudioPaddingBytes();
-  chunkSize+=padding;
+  ULONG chunkSize=this->getLength()+getPaletteSize()+getVideoSize()+getTotalAudioSize()+getTotalPaddingBytes();
   if(chunkSize!=getCurrentFrameSize()) {
-    cout<<"CDXLHeader inconsistent size: "<<chunkSize<<" != "<<getCurrentFrameSize()<<" (computed vs header's current chunk size)"<<endl;
+    cout<<"CDXLHeader inconsistent size: "<<chunkSize<<" != "<<getCurrentFrameSize()<<" (computed chunk size vs CDXL frame size)"<<endl;
+    cout<<"palette size:"<<getPaletteSize()<<endl;
     return false;
   } else {
     return true;

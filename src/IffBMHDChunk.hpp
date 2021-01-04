@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019, 2020 Markus Schordan
+    Copyright (C) 2019-2021 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,7 +36,8 @@ class IffBMHDChunk : public IffChunk {
   UBYTE getNumPlanes() { return numPlanes; }
   UBYTE getMask() { return mask; }
   UBYTE getCompression() { return compression; }
- private:
+  void setNumPlanes(UBYTE num) { numPlanes=num; }
+private:
   UWORD width; 	// Image width in pixels
   UWORD height; // Image height in pixels
   SWORD xOrigin; // image's top-left corner on screen. Value is usually (0,0) unless image is part of a larger image or not fullscreen.
