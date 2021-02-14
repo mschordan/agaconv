@@ -39,7 +39,7 @@ AGAConv was tested on Ubuntu 18.04 and on Windows 10 with Microsoft's Ubuntu app
 
 ## Version
 
-Version: 0.9.6
+Version: 0.9.6.1
 
 ## Author
 

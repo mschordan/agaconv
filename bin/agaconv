@@ -34,7 +34,7 @@
 # exit on any error in script
 set -e
 
-agaconvVersion=0.9.6
+agaconvVersion=0.9.6.1
 
 LC_NUMERIC=POSIX
 
@@ -61,7 +61,7 @@ variableLengthFrames=yes
 
 skipFrameExtraction=no
 skipFrameConversion=no
-monitorMode=amiga
+monitorMode=keep_ratio
 
 # exits after printing
 printCdxlInfo=no
@@ -302,7 +302,7 @@ function ExtractAudioData {
     fi
 }
 
-HAM_CONVERT_VERSION=1.8.0
+HAM_CONVERT_VERSION=1.8.1
 HAM_CONVERT_PATH="ham_convert"
 HAM_CONVERT_JAR="ham_convert_${HAM_CONVERT_VERSION}.jar"
 
@@ -416,7 +416,11 @@ function EncodeCDXL {
         paddingSize=4
     else
         paddingSize=0
-        fixedPlanesOption="--fixed-planes $planes"
+        if [[ "$hamMode" == "yes" ]] || [[ "$colorMode" == "ehb" ]]; then
+	    fixedPlanesOption=""
+	else
+            fixedPlanesOption="--fixed-planes $planes"
+	fi
     fi
     
     AGACONV_ENCODE_COMMAND="${AGACONV_ENCODE} --cdxl-encode --fps $framesPerSecond --pcm-file $audioOutFile --audio-mode $audioMode --gfx-mode $screenMode ${agaconvEncodeColorOption} ${agaconvEncodeStdCdxlOption} ${fixedPlanesOption} --frequency $frequency --cdxl-padding-size $paddingSize $firstFrameInputFile $outputFileName --status ${agaconvQuietModeOption} $DEBUG_OPTION"
