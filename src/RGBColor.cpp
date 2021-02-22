@@ -87,9 +87,27 @@ string RGBColor::toHexString() {
 }
 
 UBYTE RGBColor::convert8BitTo4Bit(UBYTE col) {
-  return ((UWORD)col)>>4;
+  // first map to XX then shift (mapping only relevant for HAM8/24 to HAM8/12 conversion)
+  if(col<=8) col=0;
+  else if(col>=9&&col<=25) col=17;
+  else if(col>=26&&col<=42) col=34;
+  else if(col>=43&&col<=59) col=51;
+  else if(col>=60&&col<=76) col=68;
+  else if(col>=77&&col<=93) col=85;
+  else if(col>=94&&col<=110) col=102;
+  else if(col>=111&&col<=127) col=119;
+  else if(col>=128&&col<=144) col=136;
+  else if(col>=145&&col<=161) col=153;
+  else if(col>=162&&col<=178) col=170;
+  else if(col>=179&&col<=195) col=187;
+  else if(col>=196&&col<=212) col=204;
+  else if(col>=213&&col<=229) col=221;
+  else if(col>=230&&col<=246) col=238;
+  else if(col>=247) col=255;
+  return col>>4;
 }
 
 UBYTE RGBColor::convert4BitTo8Bit(UBYTE col) {
-  return ((UWORD) col)<<4;
+  // duplicate bits3-0 => 7-4/3-0
+  return (col<<4)|col;
 }

@@ -34,7 +34,7 @@
 # exit on any error in script
 set -e
 
-agaconvVersion=0.9.6.1
+agaconvVersion=0.9.7
 
 LC_NUMERIC=POSIX
 

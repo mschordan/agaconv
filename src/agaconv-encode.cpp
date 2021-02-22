@@ -36,7 +36,7 @@
 using namespace std;
 
 int main(int argc, char **argv) {
-  string version="0.9.6";
+  string version="0.9.7";
   try {
     CommandLineParser clp;
     clp.setVersion(version);
