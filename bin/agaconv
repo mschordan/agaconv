@@ -289,11 +289,11 @@ function ExtractAudioData {
             ;;
         none)
             echo "Error: no audio mode specified."
-            exit
+            exit 1
             ;;
         *)
             echo "Error: unsupported audio mode $audioMode."
-            exit
+            exit 1
     esac
 
     ffmpeg -i $inputFileName $FFMPEG_QUIET_OPTIONS -ar ${frequency} -f u8 -acodec pcm_u8 $AUDIO_MODE_OPTION $audioOutFile
@@ -336,13 +336,13 @@ function BatchFileConversion {
                     ;;
                 *)
                     echo "Error: color mode $colorMode with $maxColors colors not supported for $tool. Only 64, 128, 256 colors supported."
-                    exit
+                    exit 1
                     ;;
             esac
         fi
     else
         echo "Error: batch file conversion not available for tool $conversionTool."
-        exit
+        exit 1
     fi
 }
 
@@ -368,7 +368,7 @@ function SingleFileConversion {
                             ;;
                         *)
                             echo "Error: color mode $colorMode or $maxColors colors not supported for $tool."
-                            exit
+                            exit 1
                             ;;
                         
                     esac
@@ -379,7 +379,7 @@ function SingleFileConversion {
                 ;;
             *)
                 echo "Error: unknown conversion tool ${conversionTool}."
-                exit
+                exit 1
         esac
     done
 }
@@ -409,7 +409,7 @@ function EncodeCDXL {
             ;;
         *)
             echo "Error: cannot determine input for CDXL encoding. Unknown conversion tool $conversionTool."
-            exit
+            exit 1
     esac
 
     if [ $variableLengthFrames == "yes" ];then
@@ -460,7 +460,7 @@ function ComputeOutputVideoDimensions {
                 ;;
             *)
                 echo "Error: illegal monitor mode: $monitorMode"
-                exit
+                exit 1
                 ;;
         esac
     fi
@@ -478,7 +478,7 @@ function ComputeOutputVideoDimensions {
             ;;
         *)
             echo "Error: unsupported screen mode: $screenMode."
-            exit
+            exit 1
     esac
     
     # ensure the computed video height is an even number
@@ -498,7 +498,7 @@ function AdjustStdCdxlFrequency {
         ;;
         *)
             echo "Error: cannot adjust std cdxl audio with unknown audio mode: $audioMode."
-            exit
+            exit 1
     esac
         
     let oldFrequency=$frequency
@@ -527,13 +527,13 @@ else
         AGACONV_ENCODE=agaconv-encode
     else
         echo "Error: agaconv-encode not available."
-        exit
+        exit 1
     fi
 fi
 
 if [ ! type ffmpeg &> /dev/null ]; then
     echo "Error: ffmpeg not available."
-    exit
+    exit 1
 fi
 
 extractionTool="ffmpeg"
@@ -682,7 +682,7 @@ do
             batchMode="${i#*=}"
             if [[ $batchMode != "yes" ]] && [[ $batchMode != "no" ]];then
                 echo "Error: batch-mode=$batchMode - allowed values are: yes|no."
-                exit
+                exit 1
             fi
             shift
             ;;
@@ -747,12 +747,12 @@ do
         *)
             if [[ $i == "-*" ]];then
                 echo "Error: Unknown command line option: $i"
-                exit
+                exit 1
             fi
             prefix=$(expr substr $i 1 1)
             if [[ $prefix == "-" ]]; then
                 echo "Error: unknown command line option: $i"
-                exit
+                exit 1
             fi
             fileNameCounter=$((fileNameCounter+1))
             if [[ $fileNameCounter -eq 1 ]];then
@@ -761,7 +761,7 @@ do
                 outputFileName=$i;
             else
                 echo "Error: more than two file names on command line: $i"
-                exit
+                exit 1
             fi
             ;;
     esac
@@ -770,13 +770,13 @@ done
 # check if any file name was provided
 if [[ $fileNameCounter -eq 0 ]];then
     echo "Error: no file name was provided."
-    exit
+    exit 1
 fi
 
 if [[ "$printCdxlInfo" == "yes" ]];then
     if [[ -z $inputFileName ]];then
         echo "Error: No input file name provided for option --cdxl-info."
-        exit
+        exit 1
     fi
     $AGACONV_ENCODE --cdxl-info $inputFileName
     exit
@@ -795,7 +795,7 @@ fi
 # check error propagation range and if supported dithering mode is selected (it is the default)
 if [ $hcPropagation -lt 0 ] || [ $hcPropagation -gt 100 ]; then
     echo "Error: error propagation must be within 0..100 (provided:$hcPropagation)"
-    exit
+    exit 1
 else
     if [[ $hcDitherMode == "fs" ]]; then
         hcPropagationOption=propagation_$hcPropagation
@@ -808,12 +808,12 @@ fi
 # set different default values, if no user-provided value
 if [ $hcHamQuality -eq 0 ] && [[ $colorMode = "ham8" ]]; then
     echo "Error: ham quality of 0 not supported for HAM8."
-    exit
+    exit 1
 fi
 
 if [ $maxColors -lt 6 ]; then
     echo "Error: minimum number of colors is 6, but only ${maxColors} requested."
-    exit
+    exit 1
 fi
 
 outputVideoWidth=$width
@@ -833,7 +833,7 @@ fi
 
 if [[ ! -f $inputFileName ]]; then
     echo "Error: file $inputFileName does not exist."
-    exit
+    exit 1
 fi
 
 EXTENSION="${inputFileName##*.}"
@@ -895,7 +895,7 @@ case $colorMode in
         ;;
     *)
         echo "Error: unknown color-mode: $colorMode."
-        exit
+        exit 1
 esac
 
 if [[ $conversionTool == "ham_convert" ]]; then
@@ -911,7 +911,7 @@ if [[ $conversionTool == "ham_convert" ]]; then
             ;;
         *)
             echo "Error: unknown dither option for ham_convert: $hcDither."
-            exit
+            exit 1
     esac
 
     case $hcDiversity in
@@ -923,12 +923,12 @@ if [[ $conversionTool == "ham_convert" ]]; then
                 hcDiversityOption="diversity_$hcDiversity"
             else
                 echo "Color mode ehb (extra-half bright) requires color diversity to be within 0..6 (provided: $hcDiversityOption)."
-                exit
+                exit 1
             fi
             ;;
         *)
             echo "Error: provided color diversity value out of range: $hcDiversity."
-            exit
+            exit 1
     esac
     if [[ $colorMode ==  "ham8" ]]; then
         # workaround1
@@ -936,7 +936,7 @@ if [[ $conversionTool == "ham_convert" ]]; then
         # check for HAM8 quality mode
         if [ $hcHamQuality -lt 1 ]; then
             echo "Error: ham8 quality setting must be at least 1."
-            exit
+            exit 1
         fi
     fi
 
@@ -958,7 +958,7 @@ if [[ $conversionTool == "ham_convert" ]]; then
             ;;
         *)
             echo "Error: provided ham quality value out of range: $hcHamQuality."
-            exit
+            exit 1
             ;;
     esac
  
@@ -976,12 +976,12 @@ if [[ $conversionTool == "ham_convert" ]]; then
                 hcQuantOption=
             else
                 echo "Error: NeuQuant neural-net image quantization supported only in HAM mode."
-                exit
+                exit 1
             fi
             ;;
         *)
             echo "Error: unknown quantisation option: $hcQuant."
-            exit
+            exit 1
             ;;
     esac
          
@@ -1009,12 +1009,12 @@ elif [[ $conversionTool == "ffmpeg" ]]; then
                     ;;
                 *)
                     echo "Error: ffmpeg dither bayer scale must be within 0..5 (provided: $ffDitherbayerScale)"
-                    exit
+                    exit 1
             esac
             ;;
         *)
             echo "Error: unknown dither option for ffmpeg: $ffDitherMode"
-            exit
+            exit 1
             ;;
     esac
 fi
@@ -1063,7 +1063,7 @@ if [[ -z "$tmpDir" ]]; then
                 ;;
             *)
                 echo "Error: unknown conversion tool in tmp file generation."
-                exit
+                exit 1
             esac
             tmpDir=$tmpDirPrefix-${bareFileName}-${monitorMode}-${colorsEntry}-${framesPerSecond}fps-${frequency}-${audioMode}-${toolShort}
             ;;
@@ -1078,7 +1078,7 @@ if [[ -z "$tmpDir" ]]; then
             ;;
         *)
             echo "Error: unknown tmp directory type: $tmpDirType."
-            exit
+            exit 1
     esac
 fi
 
@@ -1190,7 +1190,7 @@ case $conversionTool in
         ;;
     *)
         echo "Error: unknown conversion Tool $conversionTool"
-        exit
+        exit 1
         ;;
 esac
 
