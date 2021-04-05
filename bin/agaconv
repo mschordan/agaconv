@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 ##########################################################################
 # AGAConv - CDXL video converter for Commodore-Amiga computers           #
@@ -200,8 +200,10 @@ function checkHamConvertOutput {
 function log2 {
     local val=$1
     local x=0
-    for (( y=$val-1 ; $y > 0; y >>= 1 )) ; do
+    local y=$val
+    while [ $y -gt 1 ] ; do
         let x=$x+1
+        let y/=2
     done
     echo $x
 }
@@ -523,7 +525,7 @@ fi
 if [ -f ./agaconv-encode ]; then
     AGACONV_ENCODE=./agaconv-encode
 else
-    if [ type agaconv-encode &> /dev/null ]; then
+    if [ type agaconv-encode 1> /dev/null 2> /dev/null ]; then
         AGACONV_ENCODE=agaconv-encode
     else
         echo "Error: agaconv-encode not available."
@@ -531,7 +533,7 @@ else
     fi
 fi
 
-if [ ! type ffmpeg &> /dev/null ]; then
+if [ ! type ffmpeg 1> /dev/null 2> /dev/null ]; then
     echo "Error: ffmpeg not available."
     exit
 fi
@@ -883,11 +885,11 @@ case $colorMode in
         ;;
     aga8|aga7|aga6|aga5|aga4|aga3)
         planes=$(expr substr $colorMode 4 1)
-        maxColors=$((2**$planes)) # number of planes to the power of 2
+        maxColors=$((1<<$planes)) # number of planes to the power of 2
         ;;
     ocs5|ocs4|ocs3)
         planes=$(expr substr $colorMode 4 1)
-        maxColors=$((2**$planes)) # number of planes to the power of 2
+        maxColors=$((1<<$planes)) # number of planes to the power of 2
         agaconvEncodeColorOption="--color-bits 12"
         ;;
     normal)
@@ -964,14 +966,14 @@ if [[ $conversionTool == "ham_convert" ]]; then
  
     case $hcQuant in
         wu)
-            if [[ $hamMode=="yes" ]]; then
+            if [[ $hamMode == "yes" ]]; then
                 hcQuantOption=quant_wu
             else
                 hcQuantOption=
             fi
             ;;
         neuquant)
-            if [[ $hamMode=="yes" ]]; then
+            if [[ $hamMode == "yes" ]]; then
                 # for HAM neu_quant is default (and not specified on command line)
                 hcQuantOption=
             else
