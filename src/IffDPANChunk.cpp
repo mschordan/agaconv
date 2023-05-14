@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,8 +17,15 @@
 */
 
 #include "IffDPANChunk.hpp"
-#include <sstream>
+
 #include <iostream>
+#include <sstream>
+
+#include "AGAConvException.hpp"
+
+using namespace std;
+
+namespace AGAConv {
 
 void IffDPANChunk::setFrames(UWORD nframes) {
   this->nframes=nframes;
@@ -37,8 +44,7 @@ void IffDPANChunk::readChunk() {
 
 void IffDPANChunk::writeChunk() {
   if(outFile==0) {
-    cerr<<"Chunk "<<getName()<<" no outfile set."<<endl;
-    exit(1);
+    throw AGAConvException(145, "no outfile set in chunk "+getName());
   }
   writeChunkNameAndSize();
   writeUWord(version);
@@ -80,3 +86,6 @@ string IffDPANChunk::toString() {
   }
   return ss.str();
 }
+
+} // namespace AGAConv
+

@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,23 +16,21 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef FRAME_LOADER_H
-#define FRAME_LOADER_H
+#ifndef FRAME_LOADER_HPP
+#define FRAME_LOADER_HPP
 
 #include <string>
+
+namespace AGAConv {
 
 class FrameLoader {
 
  public:
-  FrameLoader();
-  virtual ~FrameLoader();
-  // called before first frame is read. Can be used for initialization.
-  virtual void readFile(std::string FileName)=0;
-  // for processing each ILBM chunk (frame)
-  //virtual void visitILBMChunk(IffILBMChunk*);
-  // for printing infos after processing
-  //virtual void postVisitLastILBMChunk(IffILBMChunk* ilbmChunk);
-
+  FrameLoader() = default;
+  virtual ~FrameLoader() = default;
+  virtual void readFile(std::string FileName) = 0;
 };
+
+} // namespace AGAConv
 
 #endif

@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,8 +17,15 @@
 */
 
 #include "IffCAMGChunk.hpp"
+
 #include <sstream>
 #include <iostream>
+
+#include "AGAConvException.hpp"
+
+using namespace std;
+
+namespace AGAConv {
 
 void IffCAMGChunk::readChunk() {
   readChunkSize();
@@ -106,6 +113,7 @@ void IffCAMGChunk::setSuperHires() {
   viewMode|=CAMG_SUPERHIRES;
 }
 void IffCAMGChunk::setUltraHires() {
-  cerr<<"Error: Ultrahires not supported in CAMG chunk."<<endl;
-  exit(1);
+  throw AGAConvException(143, "Ultrahires not supported in CAMG chunk.");
 }
+
+} // namespace AGAConv

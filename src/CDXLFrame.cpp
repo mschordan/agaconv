@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,8 +22,11 @@
 #include <sstream>
 #include "Util.hpp"
 #include "Options.hpp"
+#include "AGAConvException.hpp"
 
 using namespace std;
+
+namespace AGAConv {
 
 CDXLFrame::CDXLFrame() {
 }
@@ -94,8 +97,6 @@ void CDXLFrame::readChunk() {
   }
 
   palette.readChunk();
-  //ULONG paddingSize=header.getPaddingSize();
-  //cout<<"DEBUG: Detected padding size: "<<paddingSize<<endl;
   ULONG padBytes=getColorPaddingBytes();
   for(ULONG i=0;i<padBytes;i++) {
     readUBYTE();
@@ -113,22 +114,21 @@ void CDXLFrame::readChunk() {
 }
 
 void CDXLFrame::setOutFile(fstream* fstream) {
-  // set outfile for all children
+  // Set outfile for all children
   header.setOutFile(fstream);
   palette.setOutFile(fstream);
   if(video)
     video->setOutFile(fstream);
   if(audio)
     audio->setOutFile(fstream);
-  // set outfile for CDXLFrame object itself using overridden method
+  // Set outfile for CDXLFrame object itself using overridden method
   Chunk::setOutFile(fstream); 
 }
 
 
 void CDXLFrame::writeChunk() {
   if(!header.isConsistent()) {
-    cout<<"Error: inconsistent frame data. Bailing out."<<endl;
-    exit(1);
+    throw AGAConvException(122, "inconsistent frame data. Bailing out.");
   }
   ULONG numWrittenBytes=0;
   header.writeChunk();
@@ -160,8 +160,7 @@ void CDXLFrame::writeChunk() {
     numWrittenBytes+=1;
   }
   if(header.getCurrentFrameSize()!=numWrittenBytes) {
-    cout<<"Error: header.currentChunkSize mismatch with written bytes: "<<header.getCurrentFrameSize()<<" != "<<numWrittenBytes<<endl;
-    exit(1);
+    throw AGAConvException(123, "header: currentChunkSize mismatch with written bytes: "+std::to_string(header.getCurrentFrameSize())+" != "+std::to_string(numWrittenBytes));
   }
 }
 
@@ -191,8 +190,8 @@ void CDXLFrame::importVideo(IffILBMChunk* ilbm) {
     source=iffVideo->address(0);
   }
   UWORD planeSize=h*lineLengthInBytes;
-  // reserve bytes for all bitplanes as one contigeous memory
-  // this loop converts interleaved ILBM to bitplanes
+  // Reserve bytes for all bitplanes as one contigeous memory
+  // This loop converts interleaved ILBM to bitplanes
   ByteSequence* newBitPlanarVideo=new ByteSequence(planeSize*planes);
   for(UWORD y=0;y<h;y++) {
     for(UWORD p=0;p<planes;p++) {
@@ -214,3 +213,5 @@ ByteSequence* CDXLFrame::readByteSequence(fstream* inFile, ULONG length) {
   bs->readData(length);
   return bs;
 }
+
+} // namespace AGAConv

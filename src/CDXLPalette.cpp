@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,13 +17,18 @@
 */
 
 #include "CDXLPalette.hpp"
-#include <sstream>
+
 #include <cassert>
 #include <iostream>
+#include <sstream>
+
+#include "AGAConvException.hpp"
 #include "Options.hpp"
+
 using namespace std;
 
-// TODO: this only works for 12Bit CDXL files
+namespace AGAConv {
+
 void CDXLPalette::readChunk() {
   ULONG length=getLength();
   assert(length!=0);
@@ -49,8 +54,7 @@ void CDXLPalette::readChunk() {
     }
     break;
   default:
-    cerr<<"Unsupported color mode in reading palette chunk. Mode: "<<_colorMode<<endl;
-    exit(1);
+    throw AGAConvException(124, "Unsupported color mode in reading palette chunk. Mode: "+std::to_string(_colorMode));
   }
 }
 
@@ -73,8 +77,7 @@ void CDXLPalette::writeChunk() {
     }
     break;
   default:
-    cerr<<"Unsupported color mode in palette generation. Mode: "<<_colorMode<<endl;
-    exit(1);
+    throw AGAConvException(305, "Unsupported color mode in palette generation. Mode: "+std::to_string(_colorMode));
   }
 }
 
@@ -94,22 +97,20 @@ void CDXLPalette::addColor(RGBColor col) {
 }
 
 void CDXLPalette::addColor(UBYTE red, UBYTE green, UBYTE blue) {
-  // colors are always stored as 24bit RGB colors (but not in file if not selected)
+  // Colors are always stored as 24bit RGB colors (but not in file if not selected)
   switch(_colorMode) {
   case COL_12BIT:
   case COL_24BIT: 
     rgbColors.push_back(RGBColor(red,green,blue));
     break;
   default:
-    cerr<<"Error: addColor: unknown palette color mode: "<<_colorMode<<endl;
-    exit(1);
+    throw AGAConvException(306, "addColor: unknown palette color mode: "+std::to_string(_colorMode));
   }
 }
 
-// this method is only relevant when *reading* 12 bit palette and is not supported yet
+// This method is only relevant when *reading* 12 bit palette and is not supported yet
 void CDXLPalette::addColor(CDXLColorType color) {
-  cerr<<"Error: adding 12Bit colors to palette not supported."<<endl;
-  exit(1);
+  throw AGAConvException(125, "adding 12Bit colors to palette not supported.");
 }
 
 void CDXLPalette::importColors(IffCMAPChunk* cmap) {
@@ -146,8 +147,9 @@ ULONG CDXLPalette::getLength() {
     case COL_24BIT:
       return rgbColors.size()*3;
     default:
-      cerr<<"Error: unknown palette color mode: "<<_colorMode<<endl;
-      exit(1);
+      throw AGAConvException(307, "unknown palette color mode: "+std::to_string(_colorMode));
     }
   }
 }
+
+} // namespace AGAConv

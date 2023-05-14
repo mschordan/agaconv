@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,18 +16,21 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef IFF_CAMG_CHUNK_H
-#define IFF_CAMG_CHUNK_H
+#ifndef IFF_CAMG_CHUNK_HPP
+#define IFF_CAMG_CHUNK_HPP
 
+#include <string>
 #include "IffChunk.hpp"
 
+namespace AGAConv {
+
 /*
-BPLCON
-LACE: bit 2; y>=400; 0x4
-SUPERHIRES: bit 5; 0x20; 1280
-EHB: bit 7 ; 0x80 ; CMAP has only 32 colors, but BODY has 6 bitplanes
-HAM: bit 11 ; 0x800
-HIRES: bit 15; 0x8000; x>=640
+  BPLCON
+  LACE: bit 2; y>=400; 0x4
+  SUPERHIRES: bit 5; 0x20; 1280
+  EHB: bit 7 ; 0x80 ; CMAP has only 32 colors, but BODY has 6 bitplanes
+  HAM: bit 11 ; 0x800
+  HIRES: bit 15; 0x8000; x>=640
 */
 #define CAMG_LACE 0x4
 #define CAMG_SUPERHIRES 0x20
@@ -40,21 +43,23 @@ class IffCAMGChunk : public IffChunk {
   IffCAMGChunk();
   void readChunk();
   void writeChunk();
-  string toString();
-  string indent();
+  std::string toString();
+  std::string indent();
   ULONG getViewMode();
   bool isHalfBrite();
   bool isHam();
   bool isHires();
   bool isSuperHires();
   bool isLace();
-  string infoToString();
+  std::string infoToString();
   void setLores();
   void setHires();
   void setSuperHires();
   void setUltraHires();
  private:
-  ULONG viewMode; 	// viewmode bits
+  ULONG viewMode; // viewmode bits
 };
+
+} // namespace AGAConv
 
 #endif

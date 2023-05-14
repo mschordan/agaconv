@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,15 +16,13 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef CHUNK_H
-#define CHUNK_H
-
-using namespace std;
+#ifndef CHUNK_HPP
+#define CHUNK_HPP
 
 #include <fstream>
-#include <vector>
+#include "AmigaTypeDefs.hpp"
 
-#include "ByteSizeTypeDefs.hpp"
+namespace AGAConv {
 
 class Chunk {
 
@@ -32,29 +30,30 @@ class Chunk {
   Chunk();
   virtual ~Chunk();
   // set the name of the file where the iff chunk is read from
-  virtual void setFile(fstream* fstream);
+  virtual void setFile(std::fstream* fstream);
   // set the name of the output file where the iff chunk is written to
-  virtual void setOutFile(fstream* fstream);
-  string getName();
-  void setName(string);
-  string getChunkName();
+  virtual void setOutFile(std::fstream* fstream);
+  std::string getName();
+  void setName(std::string);
+  std::string getChunkName();
   uint32_t getDataSize() const;
   void setDataSize(uint32_t);
   virtual uint32_t getTotalChunkSize() const;
   virtual uint32_t getAdjustedTotalChunkSize() const;
   virtual void readChunk()=0;
   virtual void writeChunk()=0;
-  virtual string toString()=0;
-  virtual string toDetailedString();
-  string indent();
-  string peekName();
+  virtual std::string toString()=0;
+  virtual std::string toDetailedString();
+  std::string indent();
+  std::string peekName();
   bool isForm();
   bool getLongToString();
   void setLongToString(bool flag);
   static void setDebug(bool flag);
-  static void msg(string s);
+  static void msg(std::string s);
   static bool debug;
- protected:
+  static bool paddingFix; // from Options
+protected:
   uint8_t readUBYTE();
   uint16_t readUWORD();
   uint32_t readULONG();
@@ -81,22 +80,24 @@ class Chunk {
   // writes only the chunkname and its size.
   void writeChunkNameAndSize();
   // reads only the chunkname
-  string readChunkName();
+  std::string readChunkName();
   // writes a name that is provided as parameter (chunk name)
-  void writeName(string name);
+  void writeName(std::string name);
   // writes the stored chunk name
   void writeChunkName();
   // reads only the chunk size (4 bytes)
   void readChunkSize();
   // writes only the chunk size (4 bytes)
   void writeChunkSize();
-  string name; // 4 letters
+  std::string name; // 4 letters
   uint32_t dataSize=0;
-  fstream* file=nullptr;
-  fstream* outFile=nullptr;
+  std::fstream* file=nullptr;
+  std::fstream* outFile=nullptr;
   bool isFormFlag=false;
  private:
   static bool longToString;
 };
+
+} // namespace AGAConv
 
 #endif

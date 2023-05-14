@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,14 +17,14 @@
 */
 
 #include "RGBColor.hpp"
-#include <sstream>
+
 #include <iostream>
+#include <sstream>
 
 using namespace std;
 
-RGBColor::RGBColor() {
-}
- 
+namespace AGAConv {
+
 RGBColor::RGBColor(ULONG raw) {
   _red=(UBYTE)(raw>>16);
   _green=(UBYTE)(raw>>8);
@@ -87,7 +87,7 @@ string RGBColor::toHexString() {
 }
 
 UBYTE RGBColor::convert8BitTo4Bit(UBYTE col) {
-  // first map to XX then shift (mapping only relevant for HAM8/24 to HAM8/12 conversion)
+  // First map to XX then shift (mapping only relevant for HAM8/24 to HAM8/12 conversion)
   if(col<=8) col=0;
   else if(col>=9&&col<=25) col=17;
   else if(col>=26&&col<=42) col=34;
@@ -108,6 +108,8 @@ UBYTE RGBColor::convert8BitTo4Bit(UBYTE col) {
 }
 
 UBYTE RGBColor::convert4BitTo8Bit(UBYTE col) {
-  // duplicate bits3-0 => 7-4/3-0
+  // Duplicate bits3-0 => 7-4/3-0
   return (col<<4)|col;
 }
+
+} // namespace AGAConv

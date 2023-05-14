@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,14 +16,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef IFF_ANIM_FORM_H
-#define IFF_ANIM_FORM_H
+#ifndef IFF_ANIM_FORM_HPP
+#define IFF_ANIM_FORM_HPP
+
+#include <vector>
 
 #include "IffChunk.hpp"
 #include "IffILBMChunk.hpp"
-#include <vector>
 
-using namespace std;
+namespace AGAConv {
 
 class IffANIMForm : public IffChunk {
  public:
@@ -31,17 +32,19 @@ class IffANIMForm : public IffChunk {
   virtual ~IffANIMForm();
   void readChunk();
   void writeChunk();
-  string toString();
+  std::string toString();
   size_t numberOfChunks();
-  string indent();
+  std::string indent();
   IffChunk* getFirstChunk();
-  typedef vector<IffChunk*> ChunkListType;
+  typedef std::vector<IffChunk*> ChunkListType;
   IffILBMChunk* getChunk(int i); // i is chunk number starting at 0.
   void addChunk(IffILBMChunk*);
  private:
   bool endOfFile();
-  string readName();
+  std::string readName();
   ChunkListType chunkList;
 };
+
+} // namespace AGAConv
 
 #endif

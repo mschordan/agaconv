@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,12 +16,14 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef CDXL_PALETTE_H
-#define CDXL_PALETTE_H
+#ifndef CDXL_PALETTE_HPP
+#define CDXL_PALETTE_HPP
 
 #include "CDXLBlock.hpp"
 #include "IffCMAPChunk.hpp"
 #include "RGBColor.hpp"
+
+namespace AGAConv {
 
 typedef UWORD CDXLColorType;
 
@@ -34,7 +36,7 @@ class CDXLPalette : public CDXLBlock {
     Bit 12-16: unused
     CDXL 24Bit Palette is the same as CMAP (3-byte values)
   */
-  /* colors are always maintained as RGB colors. CDXL 12bit colors are
+  /* Colors are always maintained as RGB colors. CDXL 12bit colors are
      supported through setting the color mode. The color mode only
      impacts the functions 'length' and when generating the color
      palette with the overridden function 'writeChunk'. ReadChunk
@@ -52,11 +54,11 @@ class CDXLPalette : public CDXLBlock {
   void addColor(RGBColor color);
   void addColor(CDXLColorType color);
   CDXLColorType get12BitColor(UWORD colorNr);
-  // independent of color mode
+  // Independent of color mode
   size_t numberOfColors();
-  // uses color mode to compute data length.
+  // Uses color mode to compute data length.
   ULONG getLength();
-  // imports RGB colors from CMAP chunk.
+  // Imports RGB colors from CMAP chunk.
   void importColors(IffCMAPChunk* cmap);
 
   void setColorMode(CDXLPalette::COLOR_DEPTH colorMode);
@@ -65,5 +67,7 @@ class CDXLPalette : public CDXLBlock {
   std::vector<RGBColor> rgbColors;
   COLOR_DEPTH _colorMode=COL_12BIT;
 };
+
+} // namespace AGAConv
 
 #endif

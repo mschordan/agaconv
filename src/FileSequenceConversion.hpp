@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,15 +16,18 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef FILE_SEQUENCE_CONVERSION_H
-#define FILE_SEQUENCE_CONVERSION_H
+#ifndef FILE_SEQUENCE_CONVERSION_HPP
+#define FILE_SEQUENCE_CONVERSION_HPP
 
-#include <string>
 #include <map>
-#include "Stage.hpp"
-#include "Options.hpp"
+#include <string>
+
 #include "AGAConvException.hpp"
 #include "IffILBMChunk.hpp"
+#include "Options.hpp"
+#include "Stage.hpp"
+
+namespace AGAConv {
 
 /* Read a sequence of iff files and allow to operate on each
    file. Each file is read in as ILBM chunk data structure with access
@@ -50,6 +53,9 @@ class FileSequenceConversion : public Stage {
   
   virtual void visitPngFile(std::string inFileName);
 
+  // sets in file name with full path. File must be set, otherwise
+  // conversion aborts.
+  void setInFileWithPath(std::string inFileWithPath);
   enum FileType { FILE_UNKNOWN, FILE_PNG, FILE_IFF };
   FileType determineFileType(std::string inFileName);
  protected:
@@ -64,6 +70,7 @@ class FileSequenceConversion : public Stage {
   std::string nextFileName();
   std::string inFileName; // state variable
   std::string firstInFileName;
+  std::string lastInFileName;
 
  private:
   std::size_t startNumber;
@@ -72,5 +79,7 @@ class FileSequenceConversion : public Stage {
   std::size_t fileNamePatternReplacePos;
   std::size_t length; // length of number string in filename
 };
+
+} // namespace AGAConv
 
 #endif

@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,8 +17,13 @@
 */
 
 #include "IffBMHDChunk.hpp"
-#include <sstream>
+
 #include <iostream>
+#include <sstream>
+
+using namespace std;
+
+namespace AGAConv {
 
 void IffBMHDChunk::readChunk() {
   readChunkSize();
@@ -97,3 +102,5 @@ string IffBMHDChunk::toString() {
   }
   return ss.str();
 }
+
+} // namespace AGAConv

@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,11 +16,18 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "IffChunk.hpp"
 #include "IffANIMForm.hpp"
-#include "IffILBMChunk.hpp"
-#include <sstream>
+
 #include <iostream>
+#include <sstream>
+
+#include "AGAConvException.hpp"
+#include "IffChunk.hpp"
+#include "IffILBMChunk.hpp"
+
+using namespace std;
+
+namespace AGAConv {
 
 IffANIMForm::IffANIMForm() {
 }
@@ -58,14 +65,12 @@ void IffANIMForm::readChunk() {
   uint32_t pos=0;
   string formTag=readName();
   if(formTag!="FORM") {
-    cerr<<"Error: expected FORM. Found "<<formTag<<"."<<endl;
-    exit(1);
+    throw AGAConvException(140, "expected FORM. Found "+formTag+".");
   }
   this->readChunkSize();
   string formName=readName();
   if(formName!="ANIM") {
-    cerr<<"Error: expected ANIM. Found "<<formTag<<"."<<endl;
-    exit(1);
+    throw AGAConvException(141, "expected ANIM. Found "+formTag+".");
   }
   pos+=12;
   while(!endOfFile()) {
@@ -115,3 +120,5 @@ IffChunk* IffANIMForm::getFirstChunk() {
     return 0;
   }
 }
+
+} // namespace AGAConv

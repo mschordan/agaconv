@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,34 +16,37 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef IFF_CMAP_CHUNK_H
-#define IFF_CMAP_CHUNK_H
+#ifndef IFF_CMAP_CHUNK_HPP
+#define IFF_CMAP_CHUNK_HPP
 
-#include "IffDataChunk.hpp"
-#include "RGBColor.hpp"
 #include <string>
 #include <vector>
 
-using namespace std;
+#include "IffDataChunk.hpp"
+#include "RGBColor.hpp"
+
+namespace AGAConv {
 
 class IffCMAPChunk : public IffDataChunk {
  public:
   IffCMAPChunk();
-  string toString();
-  string toDetailedString();
-  string indent();
+  std::string toString();
+  std::string toDetailedString();
+  std::string indent();
   void addColor(RGBColor col);
-  // the index of the color is 0..num-1 (corresponding to the Amiga
+  // The index of the color is 0..num-1 (corresponding to the Amiga
   // register number)
-  RGBColor getColor(int idx);
-  void setColor(int idx, RGBColor col);
-  int numberOfColors();
-   // clears all colors and redefines size. Initializes all colors
+  RGBColor getColor(uint32_t idx);
+  void setColor(uint32_t idx, RGBColor col);
+  uint32_t numberOfColors();
+   // Clears all colors and redefines size. Initializes all colors
    // with 000000.
-  void reserveNumColors(int num);
-  void checkColorIndex(int idx);
+  void reserveNumColors(uint32_t num);
+  void checkColorIndex(uint32_t idx);
   std::string paletteToString();
  protected:
 };
+
+} // namespace AGAConv
 
 #endif

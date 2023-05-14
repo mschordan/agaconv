@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,11 +17,16 @@
 */
 
 #include "IffBODYChunk.hpp"
-#include <sstream>
-#include <iostream>
-#include <memory.h>
+
 #include <cassert>
+#include <iostream>
+#include <sstream>
+
+#include "AGAConvException.hpp"
+
 using namespace std;
+
+namespace AGAConv {
 
 IffBODYChunk::IffBODYChunk():
   IffDataChunk()
@@ -32,9 +37,8 @@ IffBODYChunk::IffBODYChunk():
 IffBODYChunk::~IffBODYChunk() {
 }
 
-void IffBODYChunk::uncompress(int width, int height, int bpp, int mask) {
-  cerr<<"Decompression of ILBM data not supported."<<endl;
-  exit(1);
+void IffBODYChunk::uncompress(UWORD width, UWORD height, UBYTE bpp, UBYTE mask) {
+  throw AGAConvException(142, "Decompression of ILBM data not supported.");
 }
 
 size_t IffBODYChunk::uncompressedLength() {
@@ -51,3 +55,5 @@ ByteSequence* IffBODYChunk::getUncompressedData() {
   }
   return byteSequence;
 }
+
+} // namespace AGAConv

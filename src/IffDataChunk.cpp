@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,10 @@
 #include "IffDataChunk.hpp"
 #include <sstream>
 #include <iostream>
+
+using namespace std;
+
+namespace AGAConv {
 
 void IffDataChunk::removeData() {
   data.clear();
@@ -83,6 +87,4 @@ IffDataChunkIterator IffDataChunk::end() {
   return data.end();
 }
 
-//size_t IffDataChunk::getDataSize() {
-//  return data.size();
-//}
+} // namespace AGAConv

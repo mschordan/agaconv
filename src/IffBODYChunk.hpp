@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,26 +16,29 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef IFF_BODY_CHUNK_H
-#define IFF_BODY_CHUNK_H
+#ifndef IFF_BODY_CHUNK_HPP
+#define IFF_BODY_CHUNK_HPP
 
-#include "IffDataChunk.hpp"
-#include "RGBColor.hpp"
-#include "ByteSequence.hpp"
 #include <vector>
 
-using namespace std;
+#include "ByteSequence.hpp"
+#include "IffDataChunk.hpp"
+#include "RGBColor.hpp"
+
+namespace AGAConv {
 
 class IffBODYChunk : public IffDataChunk {
  public:
   IffBODYChunk();
   ~IffBODYChunk();
   RGBColor get24BitColor(int pixelOffset); // not used
-  void uncompress(int width, int height, int bpp, int mask); // not implemented
+  void uncompress(UWORD width, UWORD height, UBYTE bpp, UBYTE mask); // not implemented
   size_t uncompressedLength();
   ByteSequence* getUncompressedData();
 
 private:
 };
+
+} // namespace AGAConv
 
 #endif

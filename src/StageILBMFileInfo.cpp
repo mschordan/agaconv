@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,34 +16,36 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <iostream>
 #include <cstdlib>
 #include <fstream>
+#include <iostream>
 
-#include "Options.hpp"
-#include "StageILBMFileInfo.hpp"
 #include "AGAConvException.hpp"
 #include "IffILBMChunk.hpp"
+#include "Options.hpp"
+#include "StageILBMFileInfo.hpp"
 
 using namespace std;
 
+namespace AGAConv {
+
 void StageILBMFileInfo::run(Options& options) {
   if(options.ilbmInfo) {
-    // read ilbm file only
+    // Read ilbm file only
     if(options.debug) cout << "DEBUG: Reading ilbm file \"" << options.inFileName << "\"."<<endl;
-    //open file
+    // Open file
     fstream inFile0;
     fstream* inFile=&inFile0;
     inFile->open(options.inFileName, ios::in | ios::binary);
     if(inFile->is_open() == false) {        
-      throw AGAConvException(string("Error: cannot open file ")+string(options.inFileName));
+      throw AGAConvException(151, string("Error: cannot open file ")+string(options.inFileName));
       return;
     }
     IffILBMChunk ilbm;
     ilbm.setFile(inFile);
     ilbm.readChunk();
     if(IffChunk::debug) cout<<"DEBUG: entire file successfully read."<<endl;
-    if(options.detailed) {
+    if(options.debug) {
       cout<<ilbm.toDetailedString();
     } else {
       cout<<ilbm.toString();
@@ -52,7 +54,7 @@ void StageILBMFileInfo::run(Options& options) {
     if(ilbm.hasBODYChunk()) {
       bool result=ilbm.uncompressBODYChunk();
       if(result) {
-        // not supported yet, is reported earlier
+        // Not supported, is reported earlier
         cout<<"Uncompressed BODY chunk."<<endl;
       } else {
         cout<<"BODY chunk not compressed."<<endl;
@@ -60,3 +62,5 @@ void StageILBMFileInfo::run(Options& options) {
     }
   }
 }
+
+} // namespace AGAConv

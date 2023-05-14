@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,17 +16,21 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef CDXL_BLOCK_H
-#define CDXL_BLOCK_H
+#ifndef CDXL_BLOCK_HPP
+#define CDXL_BLOCK_HPP
 
 #include "IffChunk.hpp"
 
+namespace AGAConv {
+
 class CDXLBlock : public Chunk {
  public:
-  CDXLBlock();
+  CDXLBlock() = default;
   virtual ULONG getLength()=0;
-  // cdxl blocks cannot read size on their own. Size must be set before reading.
+  // CDXL blocks cannot read size on their own. Size must be set before reading.
   void setDataSize(ULONG dataSize);
 };
+
+} // namespace AGAConv
 
 #endif

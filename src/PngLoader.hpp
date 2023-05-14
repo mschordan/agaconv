@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,19 +16,21 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef PNG_FILE_READER_H
-#define PNG_FILE_READER_H
+#ifndef PNG_FILE_READER_HPP
+#define PNG_FILE_READER_HPP
 
-#include <string>
 #include <map>
-#include <vector>
 #include <png.h>
+#include <string>
+#include <vector>
 
-#include "Stage.hpp"
-#include "FrameLoader.hpp"
 #include "AGAConvException.hpp"
-#include "RGBColor.hpp"
+#include "FrameLoader.hpp"
 #include "IffILBMChunk.hpp"
+#include "RGBColor.hpp"
+#include "Stage.hpp"
+
+namespace AGAConv {
 
 /* Read a sequence of png files and allow to operate on each
    file.
@@ -38,13 +40,13 @@ class PngLoader : public FrameLoader {
  public:
   PngLoader();
   virtual ~PngLoader();
-  //! called before first frame is read. Can be used for initialization.
+  //! Called before first frame is read. Can be used for initialization.
   virtual void readFile(std::string FileName);
 
   void printFileInfo();
 
-  //! creates all chunks and a valid ILBM chunk from the read PNG.
-  IffILBMChunk* createILBMChunk();
+  //! Creates all chunks and a valid ILBM chunk from the read PNG.
+  IffILBMChunk* createILBMChunk(Options& options);
 
   /*! A png cannot contain HAM or HalfBrite info. LACE is currently not
     supported.  Therefore the only information that needs to be set
@@ -53,11 +55,11 @@ class PngLoader : public FrameLoader {
     provided resolution. 
   */
   IffCMAPChunk* createIffCMAPChunk();
-  IffCAMGChunk* createIffCAMGChunk(IffBMHDChunk* bmhdChunk);
+  IffCAMGChunk* createIffCAMGChunk(IffBMHDChunk* bmhdChunk, Options& options);
   IffBMHDChunk* createIffBMHDChunk();
   IffBODYChunk* createIffBODYChunk();
 
-  void optimizePngPalette();
+  void optimizePngPalette(Options& options);
   UBYTE getOptimizedBitDepth();
   std::string colorTypeToString();
 
@@ -82,5 +84,7 @@ protected:
   void freeIntermediateBitplanes(char** bitplanes, int num);
   
 };
+
+} // namespace AGAConv
 
 #endif

@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,21 +16,23 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef IFF_BMHD_CHUNK_H
-#define IFF_BMHD_CHUNK_H
+#ifndef IFF_BMHD_CHUNK_HPP
+#define IFF_BMHD_CHUNK_HPP
 
 #include "IffChunk.hpp"
+
+namespace AGAConv {
 
 class IffBMHDChunk : public IffChunk {
  public:
   IffBMHDChunk();
-  // only sets values, does not allocate memory. Also sets page width and height.
+  // Only sets values, does not allocate memory. Also sets page width and height.
   // the values are also used to check whether the size of added bitplanes is consistent.
   IffBMHDChunk(UWORD width, UWORD height, UBYTE numPlanes);
   void readChunk();
   void writeChunk();
-  string toString();
-  string indent();
+  std::string toString();
+  std::string indent();
   UWORD getWidth() { return width; }
   UWORD getHeight() { return height; }
   UBYTE getNumPlanes() { return numPlanes; }
@@ -38,19 +40,21 @@ class IffBMHDChunk : public IffChunk {
   UBYTE getCompression() { return compression; }
   void setNumPlanes(UBYTE num) { numPlanes=num; }
 private:
-  UWORD width; 	// Image width in pixels
-  UWORD height; // Image height in pixels
-  SWORD xOrigin; // image's top-left corner on screen. Value is usually (0,0) unless image is part of a larger image or not fullscreen.
+  UWORD width; 	     // Image width in pixels
+  UWORD height;      // Image height in pixels
+  SWORD xOrigin;     // Image's top-left corner on screen. Value is usually (0,0) unless image is part of a larger image or not fullscreen.
   SWORD yOrigin;
-  UBYTE numPlanes; // Number of planes in bitmap (0 if there is only a colormap and no image data. (i.e. this file is just a colormap.)).
-  UBYTE mask; // 1 = masked, 2 = transparent color, 3 = lasso (for MacPaint). Mask data is not considered a bit plane.
+  UBYTE numPlanes;   // Number of planes in bitmap (0 if there is only a colormap and no image data. (i.e. this file is just a colormap.)).
+  UBYTE mask;        // 1 = masked, 2 = transparent color, 3 = lasso (for MacPaint). Mask data is not considered a bit plane.
   UBYTE compression; // 0: uncompressed, 1: RLE compressed.
   UBYTE pad1;
-  UWORD transClr; // Transparent colour, useful only when mask >= 2
-  UBYTE xAspect; //	Pixel aspect, a ratio width:height; used for displaying the image on a variety of different screen resolutions.
+  UWORD transClr;    // Transparent colour, useful only when mask >= 2
+  UBYTE xAspect;     // Pixel aspect, a ratio width:height; used for displaying the image on a variety of different screen resolutions.
   UBYTE yAspect;
-  SWORD pageWidth; // The size of the screen the image is to be displayed on, in pixels
+  SWORD pageWidth;   // The size of the screen the image is to be displayed on, in pixels
   SWORD pageHeight;
 };
+
+} // namespace AGAConv
 
 #endif

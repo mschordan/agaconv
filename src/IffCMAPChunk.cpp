@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,10 +16,16 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "IffCMAPChunk.hpp"
-#include <sstream>
-#include <iostream>
 #include <cassert>
+#include <iostream>
+#include <sstream>
+
+#include "AGAConvException.hpp"
+#include "IffCMAPChunk.hpp"
+
+using namespace std;
+
+namespace AGAConv {
 
 void IffCMAPChunk::addColor(RGBColor col) {
   add(col.getRed());
@@ -27,22 +33,21 @@ void IffCMAPChunk::addColor(RGBColor col) {
   add(col.getBlue());
 }
 
-void IffCMAPChunk::reserveNumColors(int num) {
+void IffCMAPChunk::reserveNumColors(uint32_t num) {
   removeData();
-  int numBytes=num*3;
-  for(int i=0;i<numBytes;i++) {
+  uint32_t numBytes=num*3;
+  for(uint32_t i=0;i<numBytes;i++) {
     add(0);
   }
 }
 
-void IffCMAPChunk::checkColorIndex(int idx) {
+void IffCMAPChunk::checkColorIndex(uint32_t idx) {
   if(idx>=numberOfColors()) {
-    cerr<<"Error: IffCMAPChunk::setColor out of bounds in CMAP chunk."<<endl;
-    exit(1);
+    throw AGAConvException(144, "IffCMAPChunk::setColor out of bounds in CMAP chunk.");
   }
 }
 
-void IffCMAPChunk::setColor(int idx, RGBColor col) {
+void IffCMAPChunk::setColor(uint32_t idx, RGBColor col) {
   checkColorIndex(idx);
   UBYTE* address=&data[0]+idx*3;
   address[0]=col.getRed();
@@ -50,7 +55,7 @@ void IffCMAPChunk::setColor(int idx, RGBColor col) {
   address[2]=col.getBlue();
 }
 
-RGBColor IffCMAPChunk::getColor(int idx) {
+RGBColor IffCMAPChunk::getColor(uint32_t idx) {
   checkColorIndex(idx);
   UBYTE* address=&data[0]+idx*3;
   return RGBColor(address[0],
@@ -82,7 +87,7 @@ string IffCMAPChunk::toDetailedString() {
   
 string IffCMAPChunk::paletteToString() {
   stringstream ss;
-  for(int i=0;i<numberOfColors();i++) {
+  for(uint32_t i=0;i<numberOfColors();i++) {
     if(i!=0)
       ss<<" ";
     RGBColor c=getColor(i);
@@ -91,7 +96,9 @@ string IffCMAPChunk::paletteToString() {
   return ss.str();
 }
 
-int IffCMAPChunk::numberOfColors() {
+uint32_t IffCMAPChunk::numberOfColors() {
   assert(data.size()%3==0);
-  return (int)(data.size()/3);
+  return (uint32_t)(data.size()/3);
 }
+
+} // namespace AGAConv

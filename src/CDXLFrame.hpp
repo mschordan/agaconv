@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,31 +16,28 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef CDXL_FRAME_H
-#define CDXL_FRAME_H
+#ifndef CDXL_FRAME_HPP
+#define CDXL_FRAME_HPP
 
+#include <fstream>
 #include <vector>
-#include "IffChunk.hpp"
+
+#include "ByteSequence.hpp"
+#include "CDXLBlock.hpp"
 #include "CDXLHeader.hpp"
 #include "CDXLPalette.hpp"
-#include "ByteSequence.hpp"
+#include "IffChunk.hpp"
 #include "IffILBMChunk.hpp"
 
-/*
-Audio:= standard uncompressed signed 8-bit PCM.
-*/
+namespace AGAConv {
 
-/*
-Video:= Video is encoded differently based on the info byte in the header.
-  RGB is encoded as an index into the palette for the current frame.
-  HAM is encoded by using the palette for the current frame.
-*/
-
-#include "CDXLBlock.hpp"
-#include <fstream>
-
-typedef ByteSequence CDXLVideo;
+// Audio:= standard uncompressed signed 8-bit PCM.
 typedef ByteSequence CDXLAudio;
+
+// Video:= Video is encoded differently based on the info byte in the header.
+// - RGB is encoded as an index into the palette for the current frame.
+// - HAM is encoded by using the palette for the current frame.
+typedef ByteSequence CDXLVideo;
 
 class CDXLFrame : public CDXLBlock {
  public:
@@ -48,26 +45,28 @@ class CDXLFrame : public CDXLBlock {
   ~CDXLFrame();
   CDXLHeader header;
   CDXLPalette palette;
-  CDXLVideo* video;
-  CDXLAudio* audio;
+  CDXLVideo* video=nullptr;
+  CDXLAudio* audio=nullptr;
   void readChunk() override;
   void writeChunk() override;
-  void setOutFile(fstream* fstream) override;
+  void setOutFile(std::fstream* fstream) override;
   ULONG getLength();
-  // alignment defines the boundaries for which pad bytes should be computed
+  // Alignment defines the boundaries for which pad bytes should be computed
   // e.g. to align for LONG (=4 bytes): computePadBytes(4,13) = 3,
   // computePadBytes(4,4) = 0, computePadBytes(4,2) = 2
   static ULONG computePaddingBytes(ULONG alignment, ULONG size);
   std::string toString();
   // requires the header to be properly initialized
   void importVideo(IffILBMChunk* body);
-  ByteSequence* readByteSequence(fstream* inFile, ULONG length);
+  ByteSequence* readByteSequence(std::fstream* inFile, ULONG length);
   void setPaddingSize(ULONG);
   ULONG getPaddingSize();
   ULONG getColorPaddingBytes();
   ULONG getVideoPaddingBytes();
   ULONG getAudioPaddingBytes();
  private:
-  };
+};
+
+} // namespace AGAConv
 
 #endif

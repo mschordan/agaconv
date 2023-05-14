@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,18 +16,26 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef ANIM_EXCEPTION_H
-#define ANIM_EXCEPTION_H
+#ifndef AGACONV_EXCEPTION_HPP
+#define AGACONV_EXCEPTION_HPP
 
-#include <iostream>
+#include <cstdint>
 #include <exception>
+#include <iostream>
 #include <string>
 
-struct AGAConvException : public std::exception {
-  AGAConvException();
-  AGAConvException(std::string);
+namespace AGAConv {
+
+class AGAConvException : public std::exception {
+public:
+  AGAConvException(std::uint32_t, std::string);
   const char* what() const throw();
-  std::string exceptionText;
+protected:
+  std::uint32_t errorNr;
+  std::string errorMessage;
+  std::string fullErrorMessage;
 };
+
+} // namespace AGAConv
 
 #endif

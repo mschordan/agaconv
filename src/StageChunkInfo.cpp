@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,14 +25,16 @@
 
 using namespace std;
 
+namespace AGAConv {
+
 void StageChunkInfo::run(Options& options) {
   cout << "Opening animation file \"" << options.inFileName << "\" ... "<<endl;
-  //open file
+  // Open file
   fstream file0;
   fstream* file=&file0;
   file->open(options.inFileName, ios::in | ios::binary);
   if(file->is_open() == false) {        
-    throw AGAConvException(string("Error: cannot open file ")+options.inFileName);
+    throw AGAConvException(150, string("Error: cannot open file ")+options.inFileName.u8string());
   }
   IffANIMForm anim;
   anim.setFile(file);
@@ -41,3 +43,5 @@ void StageChunkInfo::run(Options& options) {
   cout<<anim.toString()<<endl;
   IffChunk::msg("all info printed.");
 }
+
+} // namespace AGAConv

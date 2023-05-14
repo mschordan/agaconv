@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,19 +16,24 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <iostream>
+#include "PngLoader.hpp"
+
+#include <cassert>
+#include <cstddef>
 #include <cstdlib>
 #include <fstream>
-#include <string>
-#include <cstddef>
-#include <sstream>
-#include "Options.hpp"
-#include "PngLoader.hpp"
-#include <cassert>
-#include "Util.hpp"
+#include <iostream>
 #include <png.h>
+#include <sstream>
+#include <string>
+
+#include "AGAConvException.hpp"
+#include "Options.hpp"
+#include "Util.hpp"
 
 using namespace std;
+
+namespace AGAConv {
 
 PngLoader::PngLoader()
 {
@@ -62,7 +67,7 @@ string PngLoader::colorTypeToString() {
   case PNG_COLOR_TYPE_PALETTE: return "palette";
   case PNG_COLOR_TYPE_RGB: return "RGB";
   case PNG_COLOR_TYPE_RGB_ALPHA: return "RGB alpha";
-    // intentionally no default case, trigger compiler warning if a case is missing
+    // Intentionally no default case, trigger compiler warning if a case is missing
   }
   assert(false);
 }
@@ -132,7 +137,7 @@ void PngLoader::readPngFile(char *filename) {
     png_colorp _palette=0; // _palette memory is allocated by png_get_PLTE
     png_uint_32 ret=png_get_PLTE(png,info,&_palette,&_numPaletteEntries);
     assert(ret==PNG_INFO_PLTE);
-    // copy colors because _palette is destroyed by png_destroy_read_struct
+    // Copy colors because _palette is destroyed by png_destroy_read_struct
     assert(rgbPalette.size()==0);
     for(int i=0;i<_numPaletteEntries;i++) {
       rgbPalette.push_back(RGBColor(_palette[i].red,_palette[i].green,_palette[i].blue));
@@ -177,7 +182,7 @@ IffCMAPChunk* PngLoader::createIffCMAPChunk() {
   return iffCMAPChunk;
 }
 
-IffCAMGChunk* PngLoader::createIffCAMGChunk(IffBMHDChunk* bmhdChunk) {
+IffCAMGChunk* PngLoader::createIffCAMGChunk(IffBMHDChunk* bmhdChunk, Options& options) {
   IffCAMGChunk* camgChunk=new IffCAMGChunk();
 
   switch(options.resMode) {
@@ -206,8 +211,7 @@ IffCAMGChunk* PngLoader::createIffCAMGChunk(IffBMHDChunk* bmhdChunk) {
     camgChunk->setUltraHires(); // not supported, issues error message.
     break;
   default:
-    cerr<<"Error: Unsupported graphics mode provided in options."<<endl;
-    exit(1);
+    throw AGAConvException(130, "Unsupported graphics mode provided in options (PngLoader).");
   }
   return camgChunk;
 }
@@ -219,29 +223,36 @@ IffBMHDChunk* PngLoader::createIffBMHDChunk() {
 }
 
 UBYTE PngLoader::getOptimizedBitDepth() {
-  int numConvertedBitPlanes=Util::ULONGLog2(rgbPalette.size());
-  if(Util::ULONGPow(2,numConvertedBitPlanes)!=rgbPalette.size())
+  ULONG paletteSize=(ULONG)rgbPalette.size();
+  if(paletteSize==0)
+    return 0;
+  else if(paletteSize==1) {
+    // Without this case 0 bitplanes would be generated for 1 color.
+    return 1;
+  }
+  ULONG numConvertedBitPlanes=Util::ULONGLog2(paletteSize);
+  if(Util::ULONGPow(2,numConvertedBitPlanes)!=paletteSize)
     numConvertedBitPlanes++;
   assert(numConvertedBitPlanes<=255);
   return (UBYTE)numConvertedBitPlanes;
 }
 
-// the PNG palette extracted by ffmpeg may contain more color entries than colors that are actually used in the picture.
+// The PNG palette extracted by ffmpeg may contain more color entries than colors that are actually used in the picture.
 // This routine determines the used colors, and remaps the color indexes to the new color scheme.
 // This can leave some bitplanes unused which can later be ignored if fixed number of bitplanes is requested
 // #newNumColors <= numColors
-void PngLoader::optimizePngPalette() {
-  const int colorOffset=1; // offset (currently fixed to 1 to reserve background color)
-  // max colors is 256
+void PngLoader::optimizePngPalette(Options& options) {
+  const uint32_t colorOffset=(options.reserveBlackBackgroundColor?1:0); // Offset to reserve background color)
+  // Max colors is 256
   uint32_t const maxCol=256;
-  uint32_t colorNrCount[maxCol]={}; // only those color indexes are mapped that have more than 0 uses
-  UBYTE colorNrNewIndex[maxCol]={}; // defines which color-index should be mapped to which new color_index 
+  uint32_t colorNrCount[maxCol]={}; // Only those color indexes are mapped that have more than 0 uses
+  UBYTE colorNrNewIndex[maxCol]={}; // Defines which color-index should be mapped to which new color_index 
   for(uint32_t i=0;i<maxCol;i++)
     colorNrNewIndex[i]=0;
   for (int y = 0; y < _height; y++) {
     for (int x = 0; x < _width; x++) {
       UBYTE palette_index = *(UBYTE*)((_pngImageData[y])+x);
-      assert(palette_index>=0 && (((int)palette_index)<maxCol)); // note: UBYTE 0-255
+      assert(palette_index>=0 && (((int)palette_index)<maxCol)); // Note: UBYTE 0-255
       colorNrCount[palette_index]++;
     }
   }
@@ -266,13 +277,14 @@ void PngLoader::optimizePngPalette() {
   }
   // newColLastCol is the index of the next required color nr. This equals the total number of colors.
   if(newColLastCol>maxCol) {
-    cerr<<"\n\n";
-    cerr<<"Error: input image palette has too many colors to reserve offset color(s)."<<endl;
-    cerr<<"       input image has "<<numUsedCol<<" colors. With "<<colorOffset<<" offset color(s) this requires "<<newColLastCol<<" colors. Maximum is "<<maxCol<<" colors."<<endl;
-    cerr<<"Note : ffmpeg sometimes extracts one more color than requested."<<endl;
-    exit(1);
+    stringstream ss;
+    ss<<"\n\n";
+    ss<<"Error: input image palette has too many colors to reserve offset color(s)."<<endl;
+    ss<<"       input image has "<<numUsedCol<<" colors. With "<<colorOffset<<" offset color(s) this requires "<<newColLastCol<<" colors. Maximum is "<<maxCol<<" colors."<<endl;
+    ss<<"Note : ffmpeg sometimes extracts one more color than requested."<<endl;
+    throw AGAConvException(131, ss.str());
   }
-  // print mapping
+  // Print mapping
   if(options.debug) {
     cout<<"ColorNrMapping:";
     for(uint32_t i=0;i<maxCol;i++) {
@@ -284,16 +296,16 @@ void PngLoader::optimizePngPalette() {
     cout<<endl;
   }
   
-  // perform remapping
-  // remap all body data: iterate over all pixels and remap color index
+  // Perform remapping
+  // Remap all body data: iterate over all pixels and remap color index
   for (int y = 0; y < _height; y++) {
     for (int x = 0; x < _width; x++) {
       UBYTE palette_index = *((_pngImageData[y])+x);
       *((_pngImageData[y])+x)=colorNrNewIndex[palette_index];
     }
   }
-  // rewrite colormap
-  // create copy of colormap (required because mapping can move colors in both directions in color map when reserving colors)
+  // Rewrite colormap
+  // Create copy of colormap (required because mapping can move colors in both directions in color map when reserving colors)
   std::vector<RGBColor> rgbPaletteCopy(rgbPalette);
   assert(rgbPaletteCopy.size()==rgbPalette.size());
   for(size_t i=0;i<rgbPalette.size();i++) {
@@ -302,14 +314,14 @@ void PngLoader::optimizePngPalette() {
       rgbPalette[colorNrNewIndex[i]]=rgbPaletteCopy[i];
     }
   }
-  // set all offset colors to black
+  // Set all offset colors to black
   for(uint32_t i=0;i<colorOffset;i++) {
     rgbPalette[i]=RGBColor(0,0,0);
   }
   rgbPalette.resize(colorOffset+numUsedCol);
   if(options.debug) cout<<"Resized color palette colors: "<<rgbPalette.size()<<endl;
 
-  // consistency check: ensure that all new color index are within the new color palette
+  // Consistency check: ensure that all new color index are within the new color palette
   int totalCheckCount=0;
   size_t newColNum=rgbPalette.size();
   for (int y = 0; y < _height; y++) {
@@ -324,19 +336,18 @@ void PngLoader::optimizePngPalette() {
 
 IffBODYChunk* PngLoader::createIffBODYChunk() {
   if(_width % 8 !=0) {
-    cerr<<"Error: video _width is not a multiple of 8. Not supported."<<endl;
-    exit(1);
+    throw AGAConvException(132, "PngLoader: video width = "+std::to_string(_width)+" is not a multiple of 8. Not supported.");
   }
   IffBODYChunk* bodyChunk=new IffBODYChunk();
   int numBitPlanes=_bitDepth;
   char** bitplanes;
   allocateIntermediateBitplanes(bitplanes,numBitPlanes);
-  // create (uncompressed) ILBM bitlines from PNG chunky data
+  // Create (uncompressed) ILBM bitlines from PNG chunky data
   for (int y = 0, writeIndex = 0; y < _height; y++) {
     for (int byte = 0;byte < getByteWidth(); byte++) {
       for (int bit = 0; bit < 8; bit++) {	
         int x = byte * 8 + 7 - bit;
-        // offset in paletted chunky image 
+        // Offset in paletted chunky image 
         int palette_index = *((_pngImageData[y])+x);
         for (int plane_index = 0; plane_index < numBitPlanes; plane_index++) {
           char* plane = bitplanes[plane_index];
@@ -347,7 +358,7 @@ IffBODYChunk* PngLoader::createIffBODYChunk() {
     }
   }
 
-  // add bitplanes to bodyChunk (plane 0 .. n), note: converting to ILBM bitlines
+  // Add bitplanes to bodyChunk (plane 0 .. n), note: converting to ILBM bitlines
   int numConvertedBitPlanes=getOptimizedBitDepth();
   for (int y = 0; y < _height; y++) {
     for (int plane_index = 0; plane_index < numConvertedBitPlanes; plane_index++) {
@@ -355,7 +366,7 @@ IffBODYChunk* PngLoader::createIffBODYChunk() {
       for(int i=0;i<getByteWidth();i++) {
         bodyChunk->add(plane[y*getByteWidth()+i]);
       }
-      // align to 16 bit in each bitplane line (ilbm padding byte)
+      // Align to 16 bit in each bitplane line (ilbm padding byte)
       if((getByteWidth() % 2) == 1) {
         bodyChunk->add(0);
       }
@@ -365,26 +376,27 @@ IffBODYChunk* PngLoader::createIffBODYChunk() {
   return bodyChunk;
 }
 
-IffILBMChunk* PngLoader::createILBMChunk() {
+IffILBMChunk* PngLoader::createILBMChunk(Options& options) {
   IffCMAPChunk* cmapChunk=createIffCMAPChunk();
   IffBMHDChunk* bmhdChunk=createIffBMHDChunk();
-  IffCAMGChunk* camgChunk=createIffCAMGChunk(bmhdChunk);
+  IffCAMGChunk* camgChunk=createIffCAMGChunk(bmhdChunk,options);
   IffBODYChunk* bodyChunk=createIffBODYChunk();
 
-  // conistency check
+  // Consistency check
   if(!(((ULONG)((bmhdChunk->getWidth()/8)*bmhdChunk->getHeight())*bmhdChunk->getNumPlanes())==(ULONG)bodyChunk->getDataSize())) {
-    cerr<<"Internal consistency error: "<<endl;
+    stringstream ss;
+    ss<<"Internal consistency error: "<<endl;
     ULONG w=bmhdChunk->getWidth()/8;
     ULONG h=bmhdChunk->getHeight();
     ULONG p=bmhdChunk->getNumPlanes();
-    cerr<<"w:"<<w<<" h:"<<h<<" p:"<<p<<endl;
-    cerr<<"planesize :"<<w*h<<endl;
-    cerr<<"total size:"<<w*h*p<<endl;
-    cerr<<"data size :"<<((ULONG)bodyChunk->getDataSize())<<endl;
-    exit(1);
+    ss<<"w:"<<w<<" h:"<<h<<" p:"<<p<<endl;
+    ss<<"planesize :"<<w*h<<endl;
+    ss<<"total size:"<<w*h*p<<endl;
+    ss<<"data size :"<<((ULONG)bodyChunk->getDataSize())<<endl;
+    throw AGAConvException(133, ss.str());
   }
 
-  // create ilbmChunk
+  // Create ilbmChunk
   IffILBMChunk* ilbmChunk=new IffILBMChunk();
   ilbmChunk->insertFirst(bmhdChunk);
   ilbmChunk->insertLast(camgChunk);
@@ -392,3 +404,5 @@ IffILBMChunk* PngLoader::createILBMChunk() {
   ilbmChunk->insertLast(bodyChunk);
   return ilbmChunk;
 }
+
+} // namespace AGAConv

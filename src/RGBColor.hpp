@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,23 +16,25 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef RGB_COLOR_H
-#define RGB_COLOR_H
+#ifndef RGB_COLOR_HPP
+#define RGB_COLOR_HPP
 
 #include <string>
-#include "ByteSizeTypeDefs.hpp"
+#include "AmigaTypeDefs.hpp"
 #include "IffDataChunk.hpp"
 
-// represents 24 bit color
+namespace AGAConv {
+
+// Represents 24 bit color
 class RGBColor {
  public:
-  // reads 3 color bytes from BYTE stream in order RGB
+  // Reads 3 color bytes from BYTE stream in order RGB
   //  RGBColor(IffDataChunkIterator ptr);
-  // default constructor for default initializer in containers
-  RGBColor();
-  // color from three BYTE values
+  // Default constructor for default initializer in containers
+  RGBColor() = default;
+  // Color from three BYTE values
   RGBColor(UBYTE red, UBYTE green, UBYTE blue);
-  // color from a LONG value xxRRGGBB
+  // Color from a LONG value xxRRGGBB
   RGBColor(ULONG col);
   // RGB color as 4 bytes: 00RRGGBB.
   ULONG getULONG();
@@ -44,14 +46,16 @@ class RGBColor {
   void setRed(UBYTE);
   void setGreen(UBYTE);
   void setBlue(UBYTE);
-  string toHexString();
+  std::string toHexString();
   static UBYTE convert8BitTo4Bit(UBYTE col);
   static UBYTE convert4BitTo8Bit(UBYTE col);
  private:
-  string toHexString(UBYTE);
+  std::string toHexString(UBYTE);
   UBYTE _red=0;
   UBYTE _green=0;
   UBYTE _blue=0;
 };
+
+} // namespace AGAConv
 
 #endif

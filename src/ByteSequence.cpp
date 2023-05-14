@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,11 +17,14 @@
 */
 
 #include "ByteSequence.hpp"
-#include <iostream>
-#include <fstream>
+
 #include <cassert>
+#include <fstream>
+#include <iostream>
 
 using namespace std;
+
+namespace AGAConv {
 
 ByteSequence::ByteSequence():
   debug(false)
@@ -35,10 +38,6 @@ ByteSequence::ByteSequence(ULONG size):
     add(0);
   }
   assert(getDataSize()==size);
-}
-
-// nothing todo, all data default deallocated
-ByteSequence::~ByteSequence() {
 }
 
 UBYTE* ByteSequence::address(ULONG offset) {
@@ -77,7 +76,7 @@ void ByteSequence::readDataAdjusted(ULONG dataSize0) {
 
 void ByteSequence::readAdjustPadding(uint32_t readDataSize) {
   if(readDataSize%2==1) {
-    // read padding byte if data size is odd
+    // Read padding byte if data size is odd
     inFile->get();
   }
 }
@@ -104,7 +103,7 @@ void ByteSequence::writeDataAdjusted() {
 
 void ByteSequence::writeAdjustPadding(uint32_t writeDataSize) {
   if(writeDataSize%2==1) {
-    // write padding byte if data size is odd
+    // Write padding byte if data size is odd
     outFile->put(0);
   }
 }
@@ -120,3 +119,5 @@ void ByteSequence::setInFile(fstream* inFile) {
 void ByteSequence::setOutFile(fstream* outFile) {
   this->outFile=outFile;
 }
+
+} // namespace AGAConv

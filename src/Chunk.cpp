@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,16 +16,20 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <fstream>
-#include <memory.h>
-#include <cstdlib>
-#include <iostream>
-#include <cassert>
-#include "Options.hpp"
 #include "Chunk.hpp"
+
+#include <cassert>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+
+using namespace std;
+
+namespace AGAConv {
 
 bool Chunk::debug=false;
 bool Chunk::longToString=false;
+bool Chunk::paddingFix=true;
 
 Chunk::Chunk():dataSize(0),file(0),outFile(0),isFormFlag(false) {
 }
@@ -123,7 +127,7 @@ void Chunk::readAdjustPadding(uint32_t readDataSize) {
     UBYTE padByte=file->peek();
     if(padByte!=0) {
       cout<<"WARNING: chunk "<<getName()<<" of size "<<getDataSize()<<": ";
-      if(options.paddingFix) {
+      if(Chunk::paddingFix) {
         cout<<"padding byte not 0 ("<<+padByte<<") - assuming padding is missing (not reading padding byte)."<<endl;
       } else {
         cout<<"expected padding byte not 0 ("<<+padByte<<")."<<endl;
@@ -253,3 +257,5 @@ bool Chunk::isForm() {
 string Chunk::toDetailedString() {
   return toString();
 }
+
+} // namespace AGAConv

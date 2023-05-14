@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,64 +17,74 @@
 */
 
 #include "CDXLEncode.hpp"
+
+#include <cassert>
+#include <cmath>
+#include <memory>
+
+#include "AGAConvException.hpp"
+#include "CDXLEncode.hpp"
 #include "CDXLHeader.hpp"
 #include "IffBMHDChunk.hpp"
-#include "IffCMAPChunk.hpp"
 #include "IffBODYChunk.hpp"
-#include <cassert>
-#include "Util.hpp"
-#include <cmath>
-#include "PngLoader.hpp"
+#include "IffCMAPChunk.hpp"
 #include "Options.hpp"
+#include "PngLoader.hpp"
+#include "Util.hpp"
 
-void CDXLEncode::checkFrequencyForStdCdxl() {
-  // ensure that frequency/fps is divisble by 4
+using namespace std;
+
+namespace AGAConv {
+
+// This check should always pass because the frequency is adjusted in Options::checkAndConfigureStdCdxl()
+void CDXLEncode::checkFrequencyForStdCdxl(Options& options) {
+  // Ensure that frequency/fps is divisble by 4
   if(_frequency % _fps != 0) {
-    cout<<"Frequency is not divisble by fps ("<<_frequency<<"/"<<+_fps<<"="<<((double)_frequency/_fps)<<"). Audio data cannot be devided into chunks of equal size. ... bailing out."<<endl;
-    cout<<"STANDARD CDXL OPTIMIZATION CHECK: FAIL"<<endl;
-    exit(1);
+    stringstream ss;
+    ss<<"Frequency is not divisble by fps ("<<_frequency<<"/"<<+_fps<<"="<<((double)_frequency/_fps)<<"). Audio data cannot be devided into chunks of equal size. ... bailing out."<<endl;
+    ss<<"Stanard CDXL check: FAIL";
+    throw AGAConvException(90, ss.str());
   }
-  // to be 32-bit aligned, it must be a multiple 4 for mono, a multiple of 2 for stereo
+  // To be 32-bit aligned, it must be a multiple 4 for mono, a multiple of 2 for stereo
   ULONG audioChannelDataSize=_frequency/_fps; // guaranteed to be divisible here
   assert(_audioMode==1||_audioMode==2);
   if( (audioChannelDataSize*_audioMode) % 4 != 0 ) {
-    cout<<"Total audio data per frame not 32-bit aligned ("<<_frequency<<"Hz/"<<+_fps<<"FPS*"<<_audioMode<<" = "<<audioChannelDataSize*_audioMode<<" not a multiple of 4) ... bailing out."<<endl;
-    cout<<"STANDARD CDXL OPTIMIZATION CHECK: FAIL"<<endl;
-    exit(1);
+    stringstream ss;
+    ss<<"Total audio data per frame not 32-bit aligned ("<<_frequency<<"Hz/"<<+_fps<<"FPS*"<<_audioMode<<" = "<<audioChannelDataSize*_audioMode<<" not a multiple of 4) ... bailing out."<<endl;
+    ss<<"Stanard CDXL check: FAIL"<<endl;
+    throw AGAConvException(91, ss.str());
   } 
-  cout<<"STANDARD CDXL OPTIMIZATION CHECK: PASS (frequency is divisible by FPS and total audio data is 32-bit aligned)"<<endl;
-  cout<<"Frame audio data details: "<<_frequency<<"Hz/"<<+_fps<<"FPS = "<<audioChannelDataSize<<" bytes, total audio data: "<<audioChannelDataSize*_audioMode<<" bytes per frame)"<<endl;
+  if(options.verbose>=2) {
+    cout<<"Standard CDXL: PASS (frequency is divisible by FPS and total audio data is 32-bit aligned)"<<endl;
+    cout<<"Standard CDXL: Frame audio data details: "<<_frequency<<"Hz/"<<+_fps<<"FPS = "<<audioChannelDataSize<<" bytes, total audio data: "<<audioChannelDataSize*_audioMode<<" bytes per frame)"<<endl;
+  }
 }
 
 void CDXLEncode::run(Options& options) {
   if(options.writeCdxl && options.hasOutFile()) {
     _outFile.open(options.outFileName, ios::out | ios::binary);
     if(_outFile.is_open() == false) {        
-      cerr<<"Error: cannot open output CDXL file "<<options.outFileName<<endl;
-      exit(1);
+      throw AGAConvException(92, "cannot open output CDXL file "+options.outFileName.string());
     }
     _writeFile=true;
   }
-  // audio data setup of global parameters for audio data. Actual
+  // Audio data setup of global parameters for audio data. Actual
   // conversion and audio-chunk size is computed in
   // FileSequenceConversion::run
   if(options.hasSndFile()) {
-    _sndFile.open(options.sndFileName, ios::in | ios::binary);
+    _sndFile.open(options.getTmpDirSndFileName().c_str(), ios::in | ios::binary);
     if(_sndFile.is_open() == false) {        
-      cerr<<"Error: cannot open snd file "<<options.sndFileName<<endl;
-      exit(1);
+      throw AGAConvException(93, "cannot open snd file "+options.getTmpDirSndFileName().string());
     }
-    _totalAudioDataLength=Util::fileSize(options.sndFileName);
-    cout<<"Found audio file of length "<<_totalAudioDataLength<<"."<<endl;
+    _totalAudioDataLength=Util::fileSize(options.getTmpDirSndFileName().c_str());
+    if(options.verbose>=2) cout<<"Found audio file of length "<<_totalAudioDataLength<<"."<<endl;
 
-    // compute snd data size per frame
+    // Compute snd data size per frame
     if(options.frequency<=0) {
-      cerr<<"Error: no frequency for audio file provided."<<endl;
-      exit(1);
+      throw AGAConvException(94, "no frequency for audio file provided.");
     }
     if(options.fps==0) {
-      cerr<<"Error: no fps provided."<<endl;
-      exit(1);
+      throw AGAConvException(95, "no fps provided.");
     }
     if(options.stereo) {
       _audioMode=2;
@@ -82,31 +92,25 @@ void CDXLEncode::run(Options& options) {
       _audioMode=1;
     }
 
-    switch(options.colorSize) {
+    switch(options.colorDepth) {
     case Options::COL_12BIT:
       _24BitColors=false;
       break;
     case Options::COL_24BIT:
       _24BitColors=true;
       break;
-    default:
-      cerr<<"Error: unsupported color size: "<<options.colorSize<<endl;
-      exit(1);
+      // Intentionally no default case
     }
-	_fps=(UBYTE)options.fps;
+    _fps=(UBYTE)options.fps;
     _resolutionModes=(UBYTE)options.resMode;
     _paddingModes=(UBYTE)options.paddingMode;
     _frequency=options.frequency;
     if(options.stdCdxl) {
-      checkFrequencyForStdCdxl();
+      checkFrequencyForStdCdxl(options);
     }
-    if(options.playRate==0) {
-      options.playRate=(ULONG)(options.systemTimingConstant/options.frequency);
-    }
-    cout<<"AUDIO frequency:"<<options.frequency<<", playrate:"<<options.playRate<<", fps: "<<options.fps<<", stereo: "<<options.stereo<<endl;
   }
-  if(!options.quiet) {
-    cout<<"Encoding started ... "<<endl;
+  if(options.verbose>=1) {
+    cout<<"Running internal CDXL encoder (fps: "<<options.fps<<", frequency:"<<options.frequency<<", audio mode: "<<(options.stereo?"stereo":"mono")<<")"<<endl;
   }
   FileSequenceConversion::run(options);
 }
@@ -117,37 +121,41 @@ void CDXLEncode::preVisitFirstFrame() {
 }
 
 int CDXLEncode::getMonoAudioDataLength() {
-  // available are: _currentFrameNr, _totalAudioDataLength, _fps, _frequency
-  // imprecise:  _monoAudioDataLength=options.frequency/options.fps;  
+  // Available are: _currentFrameNr, _totalAudioDataLength, _fps, _frequency
+  // Imprecise:  _monoAudioDataLength=options.frequency/options.fps;  
   int totalMonoAudioDataLength=_totalAudioDataLength/_audioMode;
-  // need total number of frames, then it's simple; or even it out within each second
-  int frameNrWithinSec=((_currentFrameNr-1) % options.fps)+1;
+  // Need total number of frames, then it's simple; or even it out within each second
+  uint32_t frameNrWithinSec=((_currentFrameNr-1) % options.fps)+1;
   double dFrameLen=(double)options.frequency/(double)options.fps;
   if(options.debug) {
     cout<<"FrameNrSec: "<<frameNrWithinSec<<" TotalMonoAudioLen: "<<totalMonoAudioDataLength<<" fps: "<<options.fps<<" dFrameLen: "<< dFrameLen<<endl;
   }
-  int frameLen = (int)std::round(dFrameLen*frameNrWithinSec-_frameLenSum);
-  // frameLen must be multiple of 2 because the Amiga takes the length in number of words
+  uint32_t frameLen = (uint32_t)std::round(dFrameLen*frameNrWithinSec-_frameLenSum);
+  // frameLen must be multiple of 2 because the Amiga requires the length
+  // in number of words (16 bit aligned)
   if(frameLen%2 == 1) {
     frameLen--;
   }
   if(frameNrWithinSec==options.fps) {
-    // correct for last frame within second
+    // Correct for last frame within second
     frameLen = options.frequency-_frameLenSum ;
     if(frameLen%2 == 1) {
-      // this means an odd frequency is used. Use alternating +/- 1 correction based on frame nr.
+      // This means an odd frequency is used. Use alternating +/- 1 correction based on frame nr.
+      if(options.verbose>=3) {
+        cout<<"CDXL Encoding leads to odd total audio length in last frame of second - applying adjustment:"<<endl;
+        cout<<"  Frame Nr           : "<<_currentFrameNr<<endl;
+        cout<<"  Audio Frequency    : "<<options.frequency<<endl;
+        cout<<"  Audio FrameLenSum  : "<<_frameLenSum<<endl;
+        cout<<"  Audio FrameLen     : "<<frameLen<<endl;
+      }
       if(_currentFrameNr%2==1)
         frameLen++;
       else
         frameLen--;
-      //cerr<<"CDXL Encoding leads to odd audio length in last frame of second."<<endl;
-      //cerr<<"Frame Nr         : "<<frameNr<<endl;
-      //cerr<<"Audio Frequency  : "<<options.frequency<<endl;
-      //cerr<<"Audio FrameLenSum: "<<_frameLenSum<<endl;
-      //cerr<<"Audio FrameLen   : "<<frameLen<<endl;
-      //exit(1);
-    }
-    _frameLenSum=0; // reset to init value
+      if(options.verbose>=3)
+        cout<<"  Audio FrameLen adj : "<<frameLen<<endl;
+      }
+    _frameLenSum=0; // Reset to initial value
   } else {
     _frameLenSum+=frameLen;
   }
@@ -158,7 +166,7 @@ int CDXLEncode::getMonoAudioDataLength() {
   return frameLen;
 }
 
-// mode: 1 mono, 2: stereo
+// Mode: 1 mono, 2: stereo
 ByteSequence* CDXLEncode::readAudioData() {
   if(_sndFile.is_open() == false) {
     cerr<<"Error: no audio file."<<endl;
@@ -169,7 +177,7 @@ ByteSequence* CDXLEncode::readAudioData() {
     ByteSequence* audioByteSequence=new ByteSequence();
     int dataLen=getMonoAudioDataLength();
     for(int j=0;j<dataLen*_audioMode;j++) {
-      /* convert from signed byte -128 .. 127
+      /* Convert from signed byte -128 .. 127
          to unsigned byte 0 .. 255
       */
       int8_t audioByte0=(int8_t)_sndFile.get();
@@ -181,11 +189,11 @@ ByteSequence* CDXLEncode::readAudioData() {
   }
   case 2: {
     ByteSequence* audioByteSequence=new ByteSequence();
-    // reshuffle bytes for stero (ABABAB.. => AAA..BBB..)
+    // Reshuffle bytes for stero (ABABAB.. => AAA..BBB..)
     list<UBYTE> tmp;
     int dataLen=getMonoAudioDataLength();
     for(int j=0;j<dataLen*_audioMode;j++) {
-      /* convert from signed byte -128 .. 127
+      /* Convert from signed byte -128 .. 127
 	 to unsigned byte 0 .. 255
       */
       int8_t audioByte0=(int8_t)_sndFile.get();
@@ -203,19 +211,17 @@ ByteSequence* CDXLEncode::readAudioData() {
     return audioByteSequence;
   }
   default:
-    cerr<<"Error: unsupported audio mode in CDXL generation (mode:"<<_audioMode<<")"<<endl;
-    exit(1);
+    throw AGAConvException(96, "unsupported audio mode in CDXL generation (mode: "+std::to_string(_audioMode)+")");
   }
-  // not reachable
   assert(false);
 }
 
 void CDXLEncode::addColorsForTargetPlanes(int targetPlanes, IffCMAPChunk* cmapChunk) {
-  // fill up colors to 2^fixedPlanes
+  // Fill up colors to 2^fixedPlanesNum
   ULONG targetColors=Util::ULONGPow(2,static_cast<ULONG>(targetPlanes));
   ULONG currentNumColors=cmapChunk->numberOfColors();
   if(targetColors>currentNumColors) {
-    cout<<"[colors:"<<currentNumColors<<"->"<<targetColors<<"] ";
+    if(options.debug) cout<<"DEBUG: [colors:"<<currentNumColors<<"->"<<targetColors<<"] ";
     ULONG colorsToAdd=targetColors-currentNumColors;
     for(ULONG i=0;i<colorsToAdd;i++) {
       cmapChunk->addColor(RGBColor(0,0,0));
@@ -224,11 +230,11 @@ void CDXLEncode::addColorsForTargetPlanes(int targetPlanes, IffCMAPChunk* cmapCh
 }
 
 void CDXLEncode::addColorsForTargetPlanes(int targetPlanes, CDXLPalette& palette) {
-  // fill up colors to 2^fixedPlanes
+  // Fill up colors to 2^fixedPlanesNum
   ULONG targetColors=Util::ULONGPow(2,static_cast<ULONG>(targetPlanes));
   ULONG currentNumColors=palette.numberOfColors();
   if(targetColors>currentNumColors) {
-    cout<<" [colors:"<<currentNumColors<<"->"<<targetColors<<"] ";
+    if(options.debug) cout<<" [colors:"<<currentNumColors<<"->"<<targetColors<<"] ";
     ULONG colorsToAdd=targetColors-currentNumColors;
     for(ULONG i=0;i<colorsToAdd;i++) {
       palette.addColor(RGBColor(0,0,0));
@@ -238,7 +244,8 @@ void CDXLEncode::addColorsForTargetPlanes(int targetPlanes, CDXLPalette& palette
 
 
 void CDXLEncode::importILBMChunk(CDXLFrame& frame, IffILBMChunk* ilbmChunk) {
-  // (i) convert iff file into a CDXL block
+  uint32_t verbosityLevel=2;
+  // (i) Convert IFF file into a CDXL block
   IffBMHDChunk* bmhdChunk=ilbmChunk->getBMHDChunk();
   IffCAMGChunk* camgChunk=ilbmChunk->getCAMGChunk();
   IffCMAPChunk* cmapChunk=dynamic_cast<IffCMAPChunk*>(ilbmChunk->getChunkByName("CMAP"));
@@ -254,12 +261,12 @@ void CDXLEncode::importILBMChunk(CDXLFrame& frame, IffILBMChunk* ilbmChunk) {
   if(!bodyChunk)
     errorChunk="BODY";
   if(!(bmhdChunk&&camgChunk&&cmapChunk&&bodyChunk)) {
-    cerr<<"Error: "<<errorChunk<<" chunk is missing."<<endl;
-    exit(1);
+    throw AGAConvException(97, errorChunk+" chunk is missing.");
+    
   }
 
   frame.header.initialize(bmhdChunk,cmapChunk,camgChunk);
-  if((!options.quiet)||options.debug) {
+  if((options.verbose>=verbosityLevel)||options.debug) {
     cout<<".. encoding CDXL frame "<<frame.header.getCurrentFrameNr();
     cout<<" ("<<cmapChunk->numberOfColors()<<" colors, "<<+bmhdChunk->getNumPlanes()<<" bitplanes)";
   }
@@ -271,66 +278,68 @@ void CDXLEncode::importILBMChunk(CDXLFrame& frame, IffILBMChunk* ilbmChunk) {
   }
 
   frame.palette.importColors(cmapChunk);
-  //cout<<"ILBM Palette: "<<cmapChunk->paletteToString()<<endl;
-  //cout<<"CDXL Palette: "<<frame.palette.toString()<<endl;
   if(options.debug) {
+    //cout<<"ILBM Palette: "<<cmapChunk->paletteToString()<<endl;
+    //cout<<"CDXL Palette: "<<frame.palette.toString()<<endl;
     cout<<"DEBUG: After importing colors for frame "<<_currentFrameNr<<endl;
     cout<<"DEBUG: ILBM Palette size: "<<cmapChunk->getDataSize()<<endl;
     cout<<"DEBUG: CDXL Palette size: "<<frame.palette.getLength()<<endl;
+    cout<<"DEBUG: num fixed planes : "<<options.fixedPlanesNum<<endl;
   }
 
   assert(ilbmChunk);
   frame.importVideo(ilbmChunk);
   assert(frame.video);
 
-  // fill color palette and video data with fill data ensure fixed frame size, update header
-  if(options.fixedPlanes>0) {
-    if(options.debug) cout<<"DEBUG: fixed planes: "<<options.fixedPlanes<<endl;
+  // Fill color palette and video data with fill data ensure fixed frame size, update header
+  if(options.fixedPlanesNum>0) {
+    if(options.debug) cout<<"DEBUG: fixed planes: "<<options.fixedPlanesNum<<endl;
     uint32_t oldNumPlanes=(uint32_t)frame.header.getNumberOfBitplanes();
-    if(options.fixedPlanes<oldNumPlanes) {
-      cout<<"\n\nError: fixed number of "<<options.fixedPlanes<<" planes requested is lower than "<<oldNumPlanes<<" planes in input frame. '--optimize no' with ffmpeg generated frames selected? Bailing out. "<<endl;
-      exit(1);
+    if(options.fixedPlanesNum<oldNumPlanes) {
+      stringstream ss;
+      ss<<"\n\nError: fixed number of "<<options.fixedPlanesNum<<" planes requested is lower than "<<oldNumPlanes<<" planes in input frame. '--optimize no' with ffmpeg generated frames selected? Bailing out. "<<endl;
+      throw AGAConvException(98, ss.str());
     }
-    // add colors may also complete a plane's colors up to 2^fixedPlanes
-    addColorsForTargetPlanes(options.fixedPlanes,frame.palette); // does not update numPlanes in BMHD
-    // update palettesize in header
+    // Add colors may also complete a plane's colors up to 2^fixedPlanesNum
+    addColorsForTargetPlanes(options.fixedPlanesNum,frame.palette); // does not update numPlanes in BMHD
+    // Update palettesize in header
     frame.header.setPaletteSize(frame.palette.numberOfColors()*frame.header.getColorBytes());
-    if(options.fixedPlanes>oldNumPlanes) {
-      cout<<"[planes:"<<oldNumPlanes<<"->"<<options.fixedPlanes<<"] ";
-      // determine plane size
+    if(options.fixedPlanesNum>oldNumPlanes) {
+      if(options.verbose>=2) cout<<"[planes:"<<oldNumPlanes<<"->"<<options.fixedPlanesNum<<"] ";
+      // Determine plane size
       UWORD lineLengthInBytes=Util::wordAlignedLengthInBytes(frame.header.getVideoWidth());
       UWORD height=frame.header.getVideoHeight();
       ULONG planeSize=(ULONG)lineLengthInBytes*(ULONG)height;
-      if(oldNumPlanes<options.fixedPlanes) {
-        ULONG planesToAdd=options.fixedPlanes-oldNumPlanes;
-        // add all required empty planes at once
+      if(oldNumPlanes<options.fixedPlanesNum) {
+        ULONG planesToAdd=options.fixedPlanesNum-oldNumPlanes;
+        // Add all required empty planes at once
         if(options.debug) cout<<"\nDEBUG: ADDING: planes:"<<planesToAdd<<" planesize: "<<planeSize<<" total: "<<planeSize*planesToAdd<<endl;
         ULONG zeroDataToAdd=planeSize*planesToAdd;
         for(ULONG i=0;i<zeroDataToAdd;i++) {
           frame.video->add(0);
         }
-        // update numberOfBitplanes
-        assert(frame.header.getNumberOfBitplanes()+planesToAdd==options.fixedPlanes);
-        frame.header.setNumberOfBitplanes(options.fixedPlanes);
+        // Update numberOfBitplanes
+        assert(frame.header.getNumberOfBitplanes()+planesToAdd==options.fixedPlanesNum);
+        frame.header.setNumberOfBitplanes(options.fixedPlanesNum);
         assert(frame.video->getDataSize()==frame.header.getNumberOfBitplanes()*planeSize);
       }
     }
   }
-  if((!options.quiet)||options.debug) {
+  if((options.verbose>=verbosityLevel)||options.debug) {
     cout<<endl;
   }
 }
 
-// set all options in CDXL header
+// Set all options in CDXL header
 void CDXLEncode::importOptions(CDXLFrame& frame) {
   frame.header.setColorBitsFlag(_24BitColors);
   
-  // padding size 2 to reproduce results
+  // Padding size 2 to reproduce results
   frame.setPaddingSize(options.paddingSize);
   
   if(_24BitColors) {
-    // use CUSTOM file type if 24 bit color mode is used, otherwise keep STANDARD (initialized)
-    //frame.header.setFileType(CUSTOM);
+    // Use CUSTOM file type if 24 bit color mode is used, otherwise keep STANDARD (initialized)
+    // frame.header.setFileType(CUSTOM);
     frame.palette.setColorMode(CDXLPalette::COL_24BIT);
   } else {
     frame.palette.setColorMode(CDXLPalette::COL_12BIT);
@@ -343,12 +352,11 @@ void CDXLEncode::importOptions(CDXLFrame& frame) {
     frame.header.setSoundMode(STEREO);
     break;
   default:
-    cerr<<"Internal error: wrong audio mode: "<<_audioMode<<endl; 
-    exit(1);
+    throw AGAConvException(302, "Internal: wrong audio mode: "+std::to_string(_audioMode));
   }
   // AnimFx only supports: BIT_PLANAR
   frame.header.setPlaneArrangement(BIT_PLANAR);
-  // set frequency (CDXL extension)
+  // Set frequency (CDXL extension)
   frame.header.setFrequency(_frequency);
   frame.header.setFps(_fps);
   frame.header.setPaddingModes(_paddingModes);
@@ -359,7 +367,7 @@ void CDXLEncode::importOptions(CDXLFrame& frame) {
 }
 
 void CDXLEncode::importAudio(CDXLFrame& frame) {
-  // audio mode is set in run method
+  // Audio mode is set in run method
   frame.audio=readAudioData();
 
   switch(frame.header.getSoundMode()) {
@@ -373,18 +381,19 @@ void CDXLEncode::importAudio(CDXLFrame& frame) {
 }
 
 void CDXLEncode::visitPngFile(string pngFileName) {
-  if(!options.quiet) {
+  if(options.verbose>=2) {
     cout<<"Loading: png file "<<pngFileName;
     cout<<" ";
   }
   PngLoader pngLoader;
   pngLoader.readFile(pngFileName);
 
-  if(options.optimize) {
-    pngLoader.optimizePngPalette();
+  if(options.optimizePngPalette) {
+    // Uses several other options for optimization
+    pngLoader.optimizePngPalette(options);
   }
 
-  IffILBMChunk* ilbmChunk=pngLoader.createILBMChunk();
+  IffILBMChunk* ilbmChunk=pngLoader.createILBMChunk(options);
   if(options.debug)
     cout<<"DEBUG: next: visitILBMChunk."<<endl;
 
@@ -403,25 +412,39 @@ void CDXLEncode::visitILBMChunk(IffILBMChunk* ilbmChunk) {
   frame.header.setFrameNr(_currentFrameNr);
   importILBMChunk(frame,ilbmChunk);
 
-  // special case: KILL EHB flag, can only be set now, after ILBM has been imported
+  // Special case: KILL EHB flag, can only be set now, after ILBM has been imported
   if(IffCAMGChunk* iffCAMGChunk=ilbmChunk->getCAMGChunk()) {
     if(frame.header.getNumberOfBitplanes()==6 && !iffCAMGChunk->isHalfBrite() && !iffCAMGChunk->isHam()) {
-      // required for AGA with 6 planes to not display EHB mode by default
+      // Required for AGA with 6 planes to not display EHB mode by default
       frame.header.setKillEHBFlag(true); 
     }
   } else {
-    cout<<"Error: no CAMG chunk found. Bailing out."<<endl;
-    exit(1);
+    // Manual clean up in lack of ref-counted pointers
+    delete ilbmChunk;
+    delete &frame;
+    throw AGAConvException(99, "no CAMG chunk found. Bailing out.");
   }
 
-  // set all audio relevant values in CDXL frame
+  // Set all audio relevant values in CDXL frame
   importAudio(frame);
   
-  // compute frame size and set (check if 1st frame)
+  // Compute frame size and set (check if 1st frame)
   ULONG frameSize=frame.getLength();
+  if(frame.getLength()%4!=0) {
+    auto len=std::to_string(frame.getLength());
+    // Manual clean up in lack of ref-counted pointers
+    delete ilbmChunk;
+    delete &frame;
+    if(options.stdCdxl) {
+      throw AGAConvException(101,"Standard CDXL: frame size of "+len+" is not 32bit aligned. This can reduce I/O speed by up to 50%. Not generating CDXL file.\nSuggestion: do not use option --std-cdxl. Custom CDXL uses 32bit padding to avoid this problem.");
+    } else {
+      throw AGAConvException(102,"Custom CDXL: frame size of "+len+" is not 32bit aligned. Inconsistent user configuration. Not generating CDXL file.");      
+    }
+  }
   frame.header.setCurrentChunkSize(frameSize);
   if(options.debug) {
     cout<<"DEBUG: frame "<<_currentFrameNr<<": setting current header chunksize = "<<frameSize<<endl;
+    cout<<"DEBUG: "<<frame.header.toString()<<endl;
   }
   if(_currentFrameNr==1) {
     frame.header.setPreviousChunkSize(0);
@@ -434,18 +457,21 @@ void CDXLEncode::visitILBMChunk(IffILBMChunk* ilbmChunk) {
     frame.setOutFile(&_outFile);
     frame.writeChunk();
   }
+
   delete &frame;
   _currentFrameNr++;
 }
 
 void CDXLEncode::postVisitLastILBMChunk(IffILBMChunk* ilbmChunk) {
-  // close CDXL file
-  if(!options.quiet) {
-    cout<<"Encoding finished."<<endl;
-  }
+  // Close CDXL file
   FileSequenceConversion::postVisitLastILBMChunk(ilbmChunk);
   _outFile.close();
-  if(!options.quiet) {
-    cout<<"Generated file "<<options.outFileName<<endl;
+  if(options.verbose>=1) {
+    cout<<"All frame chunks 32-bit aligned "
+        <<"("<<(options.stdCdxl?"Standard":"Custom")<<" CDXL check)"
+        <<endl;
+    cout<<"Generated CDXL file "<<options.outFileName<<endl;
   }
 }
+
+} // namespace AGAConv

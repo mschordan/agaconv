@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,16 +16,20 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef STAGE_CHUNK_INFO_H
-#define STAGE_CHUNK_INFO_H
+#ifndef STAGE_CHUNK_INFO_HPP
+#define STAGE_CHUNK_INFO_HPP
 
-#include "Stage.hpp"
 #include "Options.hpp"
+#include "Stage.hpp"
+
+namespace AGAConv {
 
 class StageChunkInfo : public Stage {
  public:
   virtual void run(Options& options);
  private:
 };
+
+} // namespace AGAConv
 
 #endif

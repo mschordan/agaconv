@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,18 +16,23 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef STAGE_ANIM_EDIT_H
-#define STAGE_ANIM_EDIT_H
+#ifndef STAGE_ANIM_EDIT_HPP
+#define STAGE_ANIM_EDIT_HPP
 
+#include "Options.hpp"
 #include "Stage.hpp"
+
+namespace AGAConv {
 
 class StageAnimEdit : public Stage {
  public:
   StageAnimEdit();
-  // uses options: inFile,outFile,injectDPANChunk,sndFile when
-  // inserting DPAN chunk: uses frequency/fps and sets playrate if not specified.  
-  // sets inFile and outFile in IffANIMForm
+  // Uses options: inFile,outFile,injectDPANChunk,sndFile when
+  // Inserting DPAN chunk: uses frequency/fps and sets playrate if not specified.  
+  // Sets inFile and outFile in IffANIMForm
   void run(Options& options);
 };
+
+} // namespace AGAConv
 
 #endif

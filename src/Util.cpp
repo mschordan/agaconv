@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,11 +20,14 @@
 #include <iostream>
 #include <sys/stat.h>
 #include <cassert>
+#include "AGAConvException.hpp"
 
 using namespace std;
 
-bool Util::hasPrefix(string prefix, string s) {
-  // size and mismatch have both linear complexity
+namespace AGAConv::Util {
+
+bool hasPrefix(string prefix, string s) {
+  // Size and mismatch have both linear complexity
   if(prefix.size()<=s.size()) {
     auto res = std::mismatch(prefix.begin(), prefix.end(), s.begin());
     return res.first == prefix.end();
@@ -33,8 +36,8 @@ bool Util::hasPrefix(string prefix, string s) {
   }
 }
 
-bool Util::hasSuffix(string postfix, string s) {
-  // size and mismatch have both linear complexity
+bool hasSuffix(string postfix, string s) {
+  // Size and mismatch have both linear complexity
   if(postfix.size()<=s.size()) {
     return std::equal(postfix.rbegin(), postfix.rend(), s.rbegin());
   } else {
@@ -42,7 +45,7 @@ bool Util::hasSuffix(string postfix, string s) {
   }
 }
 
-string Util::fileNameExtension(string fileName) {
+string fileNameExtension(string fileName) {
   std::string::size_type idx;
   idx = fileName.rfind('.');
 
@@ -52,34 +55,33 @@ string Util::fileNameExtension(string fileName) {
   return "";
 }
 
-UWORD Util::wordAlignedLengthInBytes(UWORD width) {
+UWORD wordAlignedLengthInBytes(UWORD width) {
   return ((width+15)/16)<<1;
 }
 
-string Util::audioModeToString(int audioMode) {
+string audioModeToString(int audioMode) {
   switch(audioMode) {
   case 1: return "mono";
   case 2: return "stereo";
   default:
-    cerr<<"Error: unknown audio mode "<<audioMode<<endl;
-    exit(1);
+    throw AGAConvException(180, "unknown audio mode "+std::to_string(audioMode));
   }
 }
 
-long Util::fileSize(std::string filename)
+long fileSize(std::string filename)
 {
     struct stat stat_buf;
     int rc = stat(filename.c_str(), &stat_buf);
     return rc == 0 ? stat_buf.st_size : -1;
 }
 
-bool Util::fileExists(std::string name) {
+bool fileExists(std::string name) {
   struct stat buffer;   
   return (stat (name.c_str(), &buffer) == 0); 
 }
 
-// power function for integers
-ULONG Util::ULONGPow(ULONG base, ULONG exp) {
+// Power function for integers
+ULONG ULONGPow(ULONG base, ULONG exp) {
   ULONG result = 1;
   while (exp) {
     if (exp&1)
@@ -90,9 +92,11 @@ ULONG Util::ULONGPow(ULONG base, ULONG exp) {
   return result;
 }
 
-ULONG Util::ULONGLog2(ULONG number) {
+ULONG ULONGLog2(ULONG number) {
   assert(number>0);
   ULONG result = 0;
   while (number >>= 1) ++result;
   return result;
 }
+
+} // namespace

@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,22 +16,38 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef COMMAND_LINE_PARSER_H
-#define COMMAND_LINE_PARSER_H
-#include "Options.hpp"
+#ifndef COMMAND_LINE_PARSER_HPP
+#define COMMAND_LINE_PARSER_HPP
+
+#include <memory>
 #include <string>
+#include <vector>
+
+#include "Configuration.hpp"
+#include "Options.hpp"
+
+namespace AGAConv {
 
 class CommandLineParser {
- public:
-  Options parse(int argc, char **argv);
+public:
+  // return value of true signals to continue processing, false means to exit.
+  void parse(int argc, char **argv, Configuration& config);
   void setVersion(std::string version);
- private:
-  bool option(std::string option);
+  void printOptionsList();
+  ~CommandLineParser();
+  bool done();
+private:
+  void printVersion();
+  void checkInOutFileOptions(Options& options);
+  void splitArgvOnEqualSign(int argc, char** argv);
   void inc();
-  int argc=0;
-  char** argv=nullptr;
-  int argi=0;
+  size_t argc;
+  std::vector<std::string> argv;
+  size_t argi=0;
   std::string version;
+  bool doneFlag=false;
 };
+
+}
 
 #endif

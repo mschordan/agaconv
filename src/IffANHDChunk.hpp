@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,20 +16,42 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef IFF_ANHD_CHUNK_H
-#define IFF_ANHD_CHUNK_H
+#ifndef IFF_ANHD_CHUNK_HPP
+#define IFF_ANHD_CHUNK_HPP
 
 #include "IffChunk.hpp"
 
-enum ANHDOperation { ILBM_BODY, ILBM_XOR, LONG_DELTA, SHORT_DELTA, GENERALIZED_DELTA, BYTE_VERTICAL_DELTA, SHORT_LONG_VERTICAL_DELTA=7};
+namespace AGAConv {
+
+enum ANHDOperation {
+                    // ANIM-0. Frame uses the ILBM image format. The actual compression method (usually PackBits)
+                    // is given by a field in the frame's BMHD chunk.
+                    ILBM_BODY=0,
+                    // ANIM 1, rarely supported. 
+                    ILBM_XOR=1,
+                    // ANIM 2, rarely supported. 
+                    LONG_DELTA=2,
+                    // ANIM 3
+                    SHORT_DELTA=3,
+                    // ANIM 4, rarely supported.
+                    GENERALIZED_DELTA=4,
+                    // ANIM 5, most common frame format.
+                    BYTE_VERTICAL_DELTA=5,
+                    // ANIM 6, rarely supported. 
+                    STEREO_BYTE_VERTICAL_DELTA=6,                    
+                    // ANIM 7 (also called SHORT_LONG_VERTICAL_DELTA)
+                    GENERALIZED_VERTICAL_DELTA_SEPARATE_DATA=7,
+                    // ANIM 8
+                    GENERALIZED_VERTICAL_DELTA_INLINE_DATA=8
+};
 
 class IffANHDChunk : public IffChunk {
  public:
   IffANHDChunk();
   void readChunk();
   void writeChunk();
-  string toString();
-  string indent();
+  std::string toString();
+  std::string indent();
  private:
   UBYTE operation; // 0=normal ILBM BODY
   UBYTE mask;
@@ -42,5 +64,7 @@ class IffANHDChunk : public IffChunk {
   ULONG bits;
   UBYTE pad2[16]; // not used
 };
+
+} // namespace AGAConv
 
 #endif

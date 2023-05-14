@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,17 +16,22 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include "CDXLHeader.hpp"
+
+#include <cassert>
+#include <iomanip>
+#include <iostream>
 #include <sstream>
 #include <string>
-#include <iostream>
-#include <iomanip>
-#include <cassert>
-#include "CDXLHeader.hpp"
-#include "Options.hpp"
+
+#include "AGAConvException.hpp"
 #include "CDXLFrame.hpp"
+#include "Options.hpp"
 #include "Util.hpp"
 
 using namespace std;
+
+namespace AGAConv {
 
 CDXLHeader::CDXLHeader()
 {
@@ -34,7 +39,7 @@ CDXLHeader::CDXLHeader()
   info.stereo=0;
   info.planeArrangement=PA_UNDEFINED;
   modes.resolutionModes=0;
-  modes.colorBitsFlag=0;
+  modes.colorDepthFlag=0;
   modes.killEHBFlag=0;
 }
 
@@ -54,7 +59,7 @@ void CDXLHeader::initialize(IffBMHDChunk* bmhd, IffCMAPChunk* cmap, IffCAMGChunk
     info.encoding=RGB;
     info.planeArrangement=BIT_PLANAR;
   }
-  modes.resolutionModes=Options::GFX_LORES; // default
+  modes.resolutionModes=Options::GFX_LORES; // Default
   if(camg->isHires()) {
     modes.resolutionModes=Options::GFX_HIRES;
   } else if(camg->isSuperHires()) {
@@ -63,7 +68,7 @@ void CDXLHeader::initialize(IffBMHDChunk* bmhd, IffCMAPChunk* cmap, IffCAMGChunk
   if(camg->isLace()) {
     modes.resolutionModes|=(1<<3); // BIT 3: LACE
   }
-  // possible refinement: fill up palette to numberOfBitplanes^2 if
+  // Possible refinement: fill up palette to numberOfBitplanes^2 if
   // tools cannot handle varying number of colors
 }
 
@@ -89,7 +94,7 @@ string CDXLInfo::encodingToString() {
 
 string CDXLGfxModes::toString() {
   stringstream ss;
-  ss<<killEHBFlagToString()<<":"<<colorBitsFlagToString()<<":"<<+resolutionModes<<endl;
+  ss<<killEHBFlagToString()<<":"<<colorDepthFlagToString()<<":"<<+resolutionModes<<endl;
   return ss.str();
 }
 
@@ -100,8 +105,8 @@ string CDXLInfo::stereoToString() {
     return "mono";
 }  
 
-string CDXLGfxModes::colorBitsFlagToString() {
-  if(colorBitsFlag==1)
+string CDXLGfxModes::colorDepthFlagToString() {
+  if(colorDepthFlag==1)
     return "24bit";
   else
     return "12bit";
@@ -120,14 +125,13 @@ string CDXLGfxModes::resolutionModesToString() {
   case Options::GFX_LORES: return "lores";
   case Options::GFX_HIRES: return "hires";
   case Options::GFX_SUPERHIRES: return "superhires";
-    // intentionally empty to trigger compiler warning
+    // Intentionally empty to trigger compiler warning
   }
-  cerr<<"Internal error: wrong resolution code:"<<+resolutionModes<<endl;
-  exit(1);
+  throw AGAConvException(303, "Internal error: wrong resolution code:"+std::to_string(resolutionModes));
 }
   
 UBYTE CDXLGfxModes::getUBYTE() {
-  UBYTE byte=((UBYTE)((UBYTE)(killEHBFlag<<5))|((UBYTE)(colorBitsFlag<<4))|((UBYTE)resolutionModes));
+  UBYTE byte=((UBYTE)((UBYTE)(killEHBFlag<<5))|((UBYTE)(colorDepthFlag<<4))|((UBYTE)resolutionModes));
   return byte;
 }
 
@@ -169,9 +173,9 @@ void CDXLHeader::readChunk() {
   frequency=readUWORD();
   fps=readUBYTE();
   UBYTE byte2=readUBYTE();
-  modes.resolutionModes=byte2&0b00001111; // bits 0-3
-  modes.colorBitsFlag=(byte2&0b00010000)>>4; // bit 4
-  modes.killEHBFlag=(byte2&0b00100000)>>5; // bit 5
+  modes.resolutionModes=byte2&0b00001111;     // Bits 0-3
+  modes.colorDepthFlag=(byte2&0b00010000)>>4; // Bit 4
+  modes.killEHBFlag=(byte2&0b00100000)>>5;    // Bit 5
   padding=readUWORD();
   setPaddingModes(padding>>12);
   reserved3=readUWORD();
@@ -194,12 +198,12 @@ void CDXLHeader::writeChunk() {
   if(info.stereo==0) {
     writeUWORD(channelAudioSize);
   } else {
-    // also for stereo data only the mono-data size is reported in the CDXL file
+    // For stereo data only the mono-data size is reported in the CDXL file
     writeUWORD(channelAudioSize);
   }
   writeUWORD(frequency);
   writeUBYTE(fps);
-  UBYTE modesWithoutReserved=modes.getUBYTE()&0b00111111; // includes kill ehb bit 5 now
+  UBYTE modesWithoutReserved=modes.getUBYTE()&0b00111111; // Includes kill ehb bit 5
   writeUBYTE(modesWithoutReserved);
   UWORD paddingSizes=(UWORD)((getPaddingModes()<<12)+(getColorPaddingBytes()<<8)+(getVideoPaddingBytes()<<4)+getAudioPaddingBytes());
   writeUWORD(paddingSizes);
@@ -227,13 +231,13 @@ string CDXLHeader::toString() {
   ss<<"Frequency: "<<frequency<<endl;
   ss<<"Fps: "<<+fps<<endl;
   ss<<"Resolution mode: "<<modes.resolutionModesToString()<<endl;
-  ss<<"Color bits: "<<modes.colorBitsFlagToString()<<endl;
+  ss<<"Color depth: "<<modes.colorDepthFlagToString()<<endl;
   ss<<"KillEHBFlag: "<<modes.killEHBFlagToString()<<endl;
   ss<<"[paddingMode]: "<<paddingModesToString()<<endl;
   ss<<"Padding: 0x"
-    <<std::hex<<std::showbase // show the 0x prefix
+    <<std::hex<<std::showbase // Show the 0x prefix
     <<std::setfill('0')
-    <<std::internal // fill between the prefix and the number
+    <<std::internal           // Fill between the prefix and the number
     <<std::setw(3)
     <<(padding&0xfff)<<std::dec<<endl;
   ss<<"reserved WORD: "<<reserved3<<endl;
@@ -242,7 +246,7 @@ string CDXLHeader::toString() {
 }
 
 ULONG CDXLHeader::getLength() {
-  // length is fixed
+  // Length is fixed
   return 32; 
 }
 
@@ -275,11 +279,11 @@ void CDXLHeader::setEncoding(CDXLVideoEncoding encoding) {
 }
 
 void CDXLHeader::setColorBitsFlag(bool flag) {
-  modes.colorBitsFlag=(short)flag;
+  modes.colorDepthFlag=(short)flag;
 }
 
 bool CDXLHeader::getColorBitsFlag() {
-  return modes.colorBitsFlag;
+  return modes.colorDepthFlag;
 }
 
 void CDXLHeader::setKillEHBFlag(bool flag) {
@@ -298,6 +302,10 @@ void CDXLHeader::setFrameNr(ULONG nr) {
   currentFrameNumber=nr;
 }
 
+ULONG CDXLHeader::getFrameNr() {
+  return currentFrameNumber;
+}
+
 UWORD CDXLHeader::getNumberOfBitplanes() {
   return numberOfBitplanes;
 }
@@ -307,7 +315,7 @@ void CDXLHeader::setNumberOfBitplanes(UWORD num) {
 }
 
 UWORD CDXLHeader::getColorBytes() {
-  if(modes.colorBitsFlag)
+  if(modes.colorDepthFlag)
     return 3;
   else
     return 2;
@@ -336,8 +344,7 @@ UWORD CDXLHeader::getTotalAudioSize() {
   case MONO:
     return getChannelAudioSize();
   default:
-    cerr<<"Unsupport audio mode."<<endl;
-    exit(1);
+    throw AGAConvException(304, "CDXLHeader: Unsupport audio mode.");
   }
 }
 
@@ -397,8 +404,7 @@ ULONG CDXLHeader::getPaddingSize() {
   case 3: return 4;
   case 4: return 8;
   default:
-    cerr<<"Error: unknown padding mode: "<<this->getPaddingModes()<<endl;
-    exit(1);
+    throw AGAConvException(120, "unknown padding mode: "+std::to_string(this->getPaddingModes()));
   }
 }
 void CDXLHeader::setPaddingSize(ULONG paddingSize) {
@@ -409,8 +415,7 @@ void CDXLHeader::setPaddingSize(ULONG paddingSize) {
   case 4: setPaddingModes(3);break;
   case 8: setPaddingModes(4);break;
   default:
-    cerr<<"Error: unknown padding size: "<<paddingSize<<endl;
-    exit(1);
+    throw AGAConvException(121, "unknown padding size: "+std::to_string(paddingSize));
   }
 }
 
@@ -450,3 +455,5 @@ ULONG CDXLHeader::getAudioPaddingBytes() {
 ULONG CDXLHeader::getTotalPaddingBytes() {
   return getColorPaddingBytes()+getVideoPaddingBytes()+getAudioPaddingBytes();
 }
+
+} // namespace AGAConv

@@ -1,13 +1,18 @@
-all:
-	make -C src
-	cp src/agaconv-encode bin
+bin/agaconv: 
+	$(MAKE) -C src --silent
+	@mkdir -p bin
+	@cp src/agaconv bin
+	@echo "Generated executable at 'bin/agaconv'. It can be copied to any location."
+
+all: bin/agaconv docs
 
 docs:
-	make -C src docs
+	$(MAKE) -C doc --silent
+
+view-man: docs doc/agaconv.1
+	cat doc/agaconv.1 | man -l -
 
 clean:
-	make -C src clean
-	rm -f bin/agaconv-encode
-
-install: all
-	@echo "Executables are available in 'bin'. Copy to any location."
+	$(MAKE) -C src clean
+	$(MAKE) -C doc clean
+	rm -fr bin

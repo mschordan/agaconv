@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,10 +16,12 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef IFF_DPAN_CHUNK_H
-#define IFF_DPAN_CHUNK_H
+#ifndef IFF_DPAN_CHUNK_HPP
+#define IFF_DPAN_CHUNK_HPP
 
 #include "IffChunk.hpp"
+
+namespace AGAConv {
 
 class IffDPANChunk : public IffChunk {
  public:
@@ -27,15 +29,17 @@ class IffDPANChunk : public IffChunk {
   IffDPANChunk(UWORD nframes);
   void readChunk();
   void writeChunk();
-  string toString();
-  string indent();
+  std::string toString();
+  std::string indent();
   void setFrames(UWORD nframes);
   UWORD getFrames();
  private:
   void init();
-   UWORD version;   /* current version=4 */
-   UWORD nframes;   /* number of frames in the animation.*/
-   ULONG flags;     /* Not used */
+  UWORD version;   // Current version=4
+  UWORD nframes;   // Number of frames in the animation.
+  ULONG flags;     // Not used
 };
+
+} // namespace AGAConv
 
 #endif

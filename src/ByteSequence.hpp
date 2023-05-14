@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,18 +16,21 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef BYTE_SEQUENCE_H
-#define BYTE_SEQUENCE_H
+#ifndef BYTE_SEQUENCE_HPP
+#define BYTE_SEQUENCE_HPP
 
-#include <vector>
 #include <fstream>
-#include "ByteSizeTypeDefs.hpp"
+#include <vector>
+
+#include "AmigaTypeDefs.hpp"
+
+namespace AGAConv {
 
 class ByteSequence {
  public:
   ByteSequence();
   ByteSequence(ULONG size);
-  ~ByteSequence();
+  ~ByteSequence() = default;
   void add(UBYTE byte);
   void readData(ULONG dataSize0);
   void readDataAdjusted(ULONG dataSize0);
@@ -51,5 +54,7 @@ class ByteSequence {
   std::fstream* outFile;
   std::vector<UBYTE> data;
 };
+
+} // namespace AGAConv
 
 #endif

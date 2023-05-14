@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,14 +17,18 @@
 */
 
 #include "CDXLDecode.hpp"
-#include <iostream>
+
 #include <cstdlib>
+#include <iostream>
+
+#include "AGAConvException.hpp"
 #include "CommandLineParser.hpp"
 #include "Stage.hpp"
-#include "AGAConvException.hpp"
 #include "Util.hpp"
 
 using namespace std;
+
+namespace AGAConv {
 
 CDXLDecode::CDXLDecode() {
 }
@@ -35,21 +39,19 @@ void CDXLDecode::run(Options& options) {
     //open file
     long fileSize=Util::fileSize(options.inFileName);
     if(fileSize==-1) {
-      cerr<<"Error: File not found."<<endl;
-      exit(1);
+      throw AGAConvException(110, "File not found: "+options.inFileName.string());
     }
     fstream inFile0;
     fstream* inFile=&inFile0;
     inFile->open(options.inFileName, ios::in | ios::binary);
-    if(inFile->is_open() == false) {        
-      cerr<<"Error: cannot open cdxl file "<<options.inFileName<<endl;
-      throw AGAConvException();
+    if(!inFile->is_open()) {        
+      throw AGAConvException(111, "cannot open cdxl file "+options.inFileName.string());
     }
     ULONG i=0;
     ULONG readLen=0;
     if(fileSize>0) {
       while(1) {
-        cout<<"DECODING frame "<<i+1<<endl;
+        if(options.verbose>=3) cout<<"DECODING frame "<<i+1<<endl;
         CDXLFrame frame;
         frame.setFile(inFile);
         frame.readChunk();
@@ -59,8 +61,7 @@ void CDXLDecode::run(Options& options) {
           break;
         }
         if(readLen+frameLen>fileSize) {
-          cerr<<"Error: incomplete frame data: readLen+frameLen: "<<readLen+frameLen<<" vs files size:"<<fileSize<<endl;
-          exit(1);
+          throw AGAConvException(112, "incomplete frame data: readLen+frameLen: "+std::to_string(readLen+frameLen)+" vs files size:"+std::to_string(fileSize));
         }
         readLen+=frameLen;
         i++;
@@ -71,3 +72,5 @@ void CDXLDecode::run(Options& options) {
     cout<<"End of cdxl file "<<options.inFileName<<endl;
   }
 }
+
+} // namespace AGAConv

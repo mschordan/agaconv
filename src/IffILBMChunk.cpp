@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,22 +16,27 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "IffChunk.hpp"
 #include "IffILBMChunk.hpp"
-#include "IffCMAPChunk.hpp"
-#include "IffBMHDChunk.hpp"
-#include "IffANHDChunk.hpp"
-#include "IffSXHDChunk.hpp"
-#include "IffSBDYChunk.hpp"
-#include "IffDPANChunk.hpp"
-#include "IffCAMGChunk.hpp"
-#include "IffBODYChunk.hpp"
-#include "IffUnknownChunk.hpp"
-#include <sstream>
-#include <iostream>
+
 #include <cassert>
+#include <iostream>
+#include <sstream>
+
+#include "AGAConvException.hpp"
+#include "IffANHDChunk.hpp"
+#include "IffBMHDChunk.hpp"
+#include "IffBODYChunk.hpp"
+#include "IffCAMGChunk.hpp"
+#include "IffCMAPChunk.hpp"
+#include "IffChunk.hpp"
+#include "IffDPANChunk.hpp"
+#include "IffSBDYChunk.hpp"
+#include "IffSXHDChunk.hpp"
+#include "IffUnknownChunk.hpp"
 
 using namespace std;
+
+namespace AGAConv {
 
 IffILBMChunk::IffILBMChunk() {
   isFormFlag=true;
@@ -40,7 +45,7 @@ IffILBMChunk::IffILBMChunk() {
 }
 
 IffILBMChunk::~IffILBMChunk() {
-  // delete all chunks
+  // Delete all chunks
   for (auto chunk : chunkList) {
     delete chunk;
   }
@@ -65,20 +70,18 @@ string IffILBMChunk::readName() {
 void IffILBMChunk::readChunk() {
   string formTag=readName();
   if(formTag!="FORM") {
-    cerr<<"Error: expected FORM (of ILBM). Found "<<formTag<<"."<<endl;
-    exit(1);
+    throw AGAConvException(146, "expected FORM (of ILBM). Found "+formTag+".");
   }
   readChunkSize();
-  setDataSize(getDataSize()-4); // correction for ILBM only
+  setDataSize(getDataSize()-4); // Correction for ILBM only
 
   if(this->getDataSize()==0) {
     cout<<"WARNING: empty FORM."<<endl;
     return;
   }
   string formName=readName();
-  if(formName!="ILBM") {
-    cerr<<"Error: expected ILBM. Found "<<formTag<<"."<<endl;
-    exit(1);
+  if(formName!="ILBM") {    
+    throw AGAConvException(147, "expected ILBM. Found "+formTag+".");
   }
   if(IffChunk::debug) cout<<"DEBUG: ILBM READY - reading chunks now."<<endl;
   uint32_t accumulatedDataSize=0;
@@ -140,7 +143,7 @@ string IffILBMChunk::indent() {
 
 string IffILBMChunk::toString() {
   stringstream ss;
-  // exception: add 4 to (internal) dataSize (different to all other chunks)
+  // Exception: add 4 to (internal) dataSize (different to all other chunks)
   // the corrected value is the value stored in the ILBM file (see writeChunk)
   ss<<indent()<<"FORM "<<"["<<getDataSize()+4<<"] "<<getChunkName()<<" @"<<getAnimStartPos()<<endl;
   for(IffChunk* chunk : chunkList) {
@@ -151,7 +154,7 @@ string IffILBMChunk::toString() {
 
 string IffILBMChunk::toDetailedString() {
   stringstream ss;
-  // exception: add 4 to (internal) dataSize (different to all other chunks)
+  // Exception: add 4 to (internal) dataSize (different to all other chunks)
   // the corrected value is the value stored in the ILBM file (see writeChunk)
   ss<<indent()<<"FORM "<<"["<<getDataSize()+4<<"] "<<getChunkName()<<" @"<<getAnimStartPos()<<endl;
   for(IffChunk* chunk : chunkList) {
@@ -176,7 +179,7 @@ bool IffILBMChunk::insertBeforeBODYChunk(IffChunk* newChunk) {
        ++i) {
     if((*i)->getName()=="BODY") {
       chunkList.insert(i,newChunk);
-      // update chunk length now
+      // Update chunk length
       dataSize+=newChunk->getTotalChunkSize();
       return true;
     }
@@ -190,7 +193,7 @@ bool IffILBMChunk::insertBeforeChunk(IffChunk* newChunk, string chunkName) {
        ++i) {
     if((*i)->getName()==chunkName) {
       chunkList.insert(i,newChunk);
-      // update chunk length now
+      // Update chunk length
       dataSize+=newChunk->getTotalChunkSize();
       return true;
     }
@@ -217,11 +220,11 @@ bool IffILBMChunk::hasBODYChunk() {
 bool IffILBMChunk::uncompressBODYChunk() {
   if(hasBMHDChunk() && hasBODYChunk()) {
     IffBMHDChunk* bmhdChunk=getBMHDChunk();
-    int width=bmhdChunk->getWidth();
-    int height=bmhdChunk->getHeight();
-    int bpp=bmhdChunk->getNumPlanes();
-    int mask=bmhdChunk->getMask();
-    int compression=bmhdChunk->getCompression();
+    UWORD width=bmhdChunk->getWidth();
+    UWORD height=bmhdChunk->getHeight();
+    UBYTE bpp=bmhdChunk->getNumPlanes();
+    UBYTE mask=bmhdChunk->getMask();
+    UBYTE compression=bmhdChunk->getCompression();
     if(compression!=0) {
       getBODYChunk()->uncompress(width, height, bpp, mask);
       return true;
@@ -235,7 +238,7 @@ int IffILBMChunk::uncompressedBODYLength() {
 }
 
 IffChunk* IffILBMChunk::getChunkByName(std::string name) {
-  // usually short lists of 1-10 chunks
+  // Usually short lists of 1-10 chunks
   for(IffChunk* chunk : chunkList) {
     if(chunk->getName()==name)
       return chunk;
@@ -258,3 +261,5 @@ IffCMAPChunk* IffILBMChunk::getCMAPChunk() {
 IffBODYChunk* IffILBMChunk::getBODYChunk() {
   return dynamic_cast<IffBODYChunk*>(getChunkByName("BODY"));
 }
+
+} // namespace AGAConv

@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2021 Markus Schordan
+    Copyright (C) 2019-2023 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,44 +16,44 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-
 #include "CommandLineParser.hpp"
-#include <string>
-#include <iostream>
-#include <sstream>
+
 #include <cstdlib>
-#include "Util.hpp"
+#include <filesystem>
+#include <iostream>
 #include <map>
-#include "Options.hpp"
+#include <sstream>
+#include <string>
+#include <vector>
+
+#include "AGAConvException.hpp"
+#include "Configuration.hpp"
+#include "Util.hpp"
 
 using namespace std;
-using namespace Util;
+
+namespace AGAConv {
 
 void CommandLineParser::inc() {
   if(argi>=argc) {
-    cerr<<"Error: command line error."<<endl;
-    exit(1);
+    throw AGAConvException(3,"command line: wrong number of arguments for option");
   } else {
     argi++;
   }
 }
 
-bool CommandLineParser::option(string option) {
-  return argv[argi]==string("--")+option;
-}
-
 static bool isAnimFileName(string s) {
   string fileExtension=Util::fileNameExtension(s);
-  return hasPrefix("anim",fileExtension)
-    ||hasPrefix("sndanim",fileExtension)
-    ||hasPrefix("fxanim",fileExtension)
+  return Util::hasPrefix("anim",fileExtension)
+    ||Util::hasPrefix("sndanim",fileExtension)
+    ||Util::hasPrefix("fxanim",fileExtension)
     ;
 }
 
 static bool isCdxlFileName(string s) {
   string fileExtension=Util::fileNameExtension(s);
-  return hasPrefix("cdxl",fileExtension)
-    ||hasPrefix("xl",fileExtension)
+  return Util::hasPrefix("cdxl",fileExtension)
+    ||Util::hasPrefix("xl",fileExtension)
     ;
 }
 
@@ -61,180 +61,211 @@ void CommandLineParser::setVersion(std::string version) {
   this->version=version;
 }
 
-Options CommandLineParser::parse(int argc0, char **argv0) {
+// Search for '=' and split if present
+void CommandLineParser::splitArgvOnEqualSign(int argc0, char** argv0) {
+  for(int i=0;i<argc0;i++) {
+    string s0=argv0[i];
+    // Check for special case in dither ffmpeg option 
+    if(Util::hasPrefix("bayer:bayer_scale=",s0)) {
+      argv.push_back(string(argv0[i]));
+      continue;
+    }
+    std::size_t found = s0.find("=");
+    if(found!=std::string::npos) {
+      string s1=s0.substr(0,found);
+      // Skip '=' and copy rest
+      string s2=s0.substr(found+1,s0.size()-(found+1));
+      argv.push_back(s1);
+      argv.push_back(s2);
+    } else {
+      argv.push_back(string(argv0[i]));
+    }
+  }
+  argc=argv.size();
+  int i=0;
+  for (auto s:argv) {
+    i++;
+  }
+}
+
+bool CommandLineParser::done() {
+  return doneFlag;
+}
+
+CommandLineParser::~CommandLineParser() {
+  // All elements are deallocated automatically
+}
+
+void CommandLineParser::checkInOutFileOptions(Options& options) {
+  bool optionWithOneInputFile
+    = options.cdxlInfo
+    || options.cdxlDecode // cdxl-info-all, only for 24bit videos (hidden)
+    || options.ilbmInfo
+    || options.chunkInfo
+    || options.firstChunkInfo
+    ;
+  
+  if(!options.hasInputFile()) {
+    throw AGAConvException(11,"No input file name provided on command line");
+  }
+  if(!optionWithOneInputFile && !options.hasOutputFile()) {
+    throw AGAConvException(12,"No output file name provided on command line");
+  }
+  if(optionWithOneInputFile && options.hasOutputFile()) {
+    throw AGAConvException(13,"Output file name "
+                        +options.outFileName.string()
+                        +" provided, but option does not require it");
+  }
+}
+
+void CommandLineParser::printVersion() {
+  cout<<"agaconv version "<<version<<endl;
+  cout<<"Copyright (C) 2019-2023 Markus Schordan"<<endl;
+  cout<<"License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>."<<endl;
+  cout<<"This is free software: you are free to change and redistribute it."<<endl;
+  cout<<"There is NO WARRANTY, to the extent permitted by law."<<endl;
+  cout<<"Written by Markus Schordan."<<endl;
+}
+
+void CommandLineParser::parse(int argc0, char **argv0, Configuration& config) {
+  
   if(version.size()==0) {
-    cerr<<"Internal error: program version not set."<<endl;
-    exit(1);
+    throw AGAConvException(300, "Internal: program version not set.");
   }
-  this->argc=argc0;
-  this->argv=argv0;
+  if(!(argc0==2 && (string(argv0[1])=="--install-config"||string(argv0[1])=="--uninstall-config"))) {
+    // Load default config file, exept when the only provided option is --init-config
+    // This is to allow cases where the config file contains errors, cannot be read,
+    // needs to be regenerated.
+    config.handleDefaultConfigFile();
+  }
+  if(argc0 <= 1) {
+    config.printCLOptions();
+    doneFlag=true;
+    return;
+  }
+
+  Options& options=Configuration::PrivateOptionsRestrictedAccessClient::getOptionsRef(config);
+
+  // Recognizes '=', splits where necessary and returns (newargc,newargv)
+  splitArgvOnEqualSign(argc0, argv0);
   string commandName=argv[0];
-  string helpText="Usage: "+commandName+" [--quiet] [--status] [--cdxl-info] [--anim-chunk-info] [--ilbm-info] [--detailed] ";
-  helpText+="[--cdxl-encode] [--cdxl-info-all] ";
-  helpText+="[--frequency NUMBER] [--color-bits NUMBER] [--anim-play-rate NUMBER] [--sndfile PCMFILE | --pcm-file PCMFILE] [--audio-data-type u8|s8] [--audio-mode mono|stereo] [--gfx-mode lores|hires|superhires] [--inject-dpan] [--no-anim-padding-fix] [--cdxl-padding-size NUMBER] [--optimize yes|no] [--std-cdxl] [--fixed-planes NUM] [--version] INFILE [OUTFILE]";
-  if(argc <= 1) {
-    cout << helpText <<endl;
-    exit(0);
-  }
-  Options options;
+  string helpTextHeader="Usage: "+commandName+" [OPTIONS] INPUTVIDEO OUTPUTVIDEO";
+  string helpExtraTextHeader="Advanced options:";
+  
   argi=1;
   int fileNames=0;
   while(argi<argc) {
+    // Special case of provided config file. Allows to override config file with commamd line options.
     stringstream ss;
-    if(option("help")) {
-      cout << helpText <<endl;
-      exit(0);
-    } else if(option("version")) {
-      cout<<"agaconv-encode version "<<version<<endl;
-      cout<<"Copyright (C) 2019-2021 Markus Schordan"<<endl;
-      cout<<"License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>."<<endl;
-      cout<<"This is free software: you are free to change and redistribute it."<<endl;
-      cout<<"There is NO WARRANTY, to the extent permitted by law."<<endl;
-      cout<<"Written by Markus Schordan."<<endl;
-      exit(0);
-    } else if(option("cdxl-info")) {
-      options.cdxlInfo=true;
-    } else if(option("cdxl-encode")) {
-      options.cdxlEncode=true;
-      options.writeCdxl=true;
-    } else if(option("cdxl-info-all")) {
-      options.cdxlDecode=true;
-    } else if(option("color-bits")) {
-      inc();
-      int colBits=std::stoi(argv[argi]);
-      switch(colBits) {
-      case 12:
-        options.colorSize=Options::COL_12BIT;
-        break;
-      case 24:
-        options.colorSize=Options::COL_24BIT;
-        break;
-      default:
-        cerr<<"Error: unsupported color format of "<<colBits<<" bits selected."<<endl;
-        exit(1);
+    if(argv[argi].size()>=2 && argv[argi][0]=='-' && argv[argi][1]=='-') {
+      string optionName=argv[argi].substr(2);
+      if(uint32_t res=config.getCLOptionNameArgs(optionName)) {
+        if(res>0) {
+          if(res==1) {
+            config.processCLOption(optionName,"true"); // TODO: BOOL0
+            inc();
+            if(options.installDefaultConfigFile) {
+              if(argc>2) {
+                throw AGAConvException(38, "option --install-config cannot be combined with other options.");
+              }
+              config.installDefaultConfigFile();
+              options.installDefaultConfigFile=false;
+              doneFlag=true;
+              return;
+            }
+            if(options.uninstallDefaultConfigFile) {
+              if(argc>2) {
+                throw AGAConvException(193, "option --uninstall-config cannot be combined with other options.");
+              }
+              config.uninstallDefaultConfigFile();
+              options.uninstallDefaultConfigFile=false;
+              doneFlag=true;
+              return;
+            }
+            if(options.resetDefaultConfigFile) {
+              if(argc>2) {
+                throw AGAConvException(39, "option --reset-config cannot be combined with other options.");
+              }
+              config.resetDefaultConfigFile();
+              options.resetDefaultConfigFile=false;
+              doneFlag=true;
+              return;
+            }
+            continue;
+          }
+          if(res==2) {
+            inc();
+            if(argi>=argc) {
+              throw AGAConvException(37,"missing argument in command line option --"+optionName+"=ARG");
+            }
+            config.processCLOption(optionName,argv[argi]);
+            inc();
+            config.checkAndLoadConfigFile();
+            continue;
+          }
+        }
       }
-    } else if(option("ilbm-info")) {
-      options.ilbmInfo=true;
-    } else if(option("detailed")) {
-      options.detailed=true;
-    } else if(option("status")) {
-      options.status=true;
-    } else if(option("quiet")) {
-      options.quiet=true;
-    } else if(option("anim-chunk-info")) {
-      options.chunkInfo=true;
-      options.readAnim=true;
-    } else if(option("no-anim-padding-fix")) {
-      options.paddingFix=false;
-    } else if(option("optimize")) {
-      inc();
-      string option=argv[argi];
-      if(option=="yes") {
-        options.optimize=true;
-      } else if (option=="no") {
-        options.optimize=false;
-      } else {
-        cerr<<"Error: unknown selection "<<option<<" for --optimize."<<endl;
-        exit(1);
-      }
-    } else if(option("fps")) {
-      inc();
-      options.fps=std::stol(argv[argi]);
-    } else if(option("fixed-planes")) {
-      inc();
-      options.fixedPlanes=std::stoi(argv[argi]);
-    } else if(option("cdxl-padding-size")) {
-      inc();
-      options.paddingSize=std::stol(argv[argi]);
-      switch(options.paddingSize) {
-      case 0: options.paddingMode=Options::PAD_UNSPECIFIED;break;
-      case 1: options.paddingMode=Options::PAD_NONE;break;
-      case 2: options.paddingMode=Options::PAD_16BIT;break;
-      case 4: options.paddingMode=Options::PAD_32BIT;break;
-      case 8: options.paddingMode=Options::PAD_64BIT;break;
-      default:
-        cerr<<"Error: unsupported padding size: "<<options.paddingSize<<endl;
-        exit(1);
-      }
-    } else if(option("std-cdxl")) {
-      options.stdCdxl=true;
-    } else if(option("audio-mode")) {
-      inc();
-      string audioMode=argv[argi];
-      if(audioMode=="stereo") {
-        options.stereo=true;
-      } else if(audioMode=="mono") {
-        options.stereo=false;
-      } else {
-        cerr<<"Error: unknown audio mode: "<<audioMode<<endl;
-        exit(1);
-      }
-    } else if(option("audio-mode")) {
-      options.stereo=false;
-    } else if(option("inject-dpan")) {
-      options.injectDPANChunk=true;
-    } else if(option("snd-file")||option("pcm-file")) {
-      inc();
-      options.sndFileName=argv[argi];
-      options.audioDataType=AUDIO_DATA_TYPE_UBYTE;
-      cout<<"Audio file name:"<<options.sndFileName<<endl;
-    } else if(option("audio-data-type")) {
-      inc();
-      string adtOption=argv[argi];
-      if(adtOption=="u8") {
-        options.audioDataType=AUDIO_DATA_TYPE_UBYTE;
-      } else if(adtOption=="s8") {
-        options.audioDataType=AUDIO_DATA_TYPE_SBYTE;
-      } else {
-        cerr<<"Error: unknown audio data type option "<<adtOption<<endl;
-        exit(1);
-      }
-    } else if(option("frequency")) {
-      inc();
-      options.frequency=std::stol(argv[argi]);
-    } else if(option("anim-play-rate")) {
-      inc();
-      options.playRate=std::stol(argv[argi]);
-    } else if(option("gfx-mode")) {
-      inc();
-      typedef std::map<string,Options::GFX_RESOLUTION> ResMapType;
-      ResMapType resModeMap={
-        {"unspecified",Options::GFX_UNSPECIFIED},
-        {"lores",Options::GFX_LORES},
-        {"hires",Options::GFX_HIRES},
-        {"superhires",Options::GFX_SUPERHIRES},
-        {"ultrahires",Options::GFX_ULTRAHIRES}
-      };
-      string modeName=argv[argi];
-      ResMapType::iterator i=resModeMap.find(modeName);
-      if(i!=resModeMap.end()) {
-        options.resMode=(*i).second;
-      } else {
-        cerr<<"Error: unknown resolution mode: "<<modeName<<endl;
-        exit(1);
-      }
-    } else if(option("debug")) {
-      options.debug=true;
-    } else {
-      switch(fileNames) {
-      case 0: options.inFileName=argv[argi];fileNames++;break;
-      case 1: options.outFileName=argv[argi];fileNames++;break;
-      default: 
-        cerr<<"Error: too many file names on command line ("<<fileNames<<")"<<endl;
-        cerr<<"inFile: "<<options.inFileName<<endl;
-        cerr<<"outFile: "<<options.outFileName<<endl;
-        cerr<<"current file name: "<<argv[argi]<<endl;
-        exit(1);
-      }
-      if(options.inFileName[0]=='-') {
-        cerr<<"Error: expected file name, option "<<options.inFileName<<" provided."<<endl;
-        exit(1);
-      }
+    }
+    if(argv[argi].size()>=1 && argv[argi][0]=='-') {
+      throw AGAConvException(5,"unknown option "+string(argv[argi]));
+    }
+    switch(fileNames) {
+    case 0: options.inFileName=string(argv[argi]);fileNames++;break;
+    case 1: options.outFileName=string(argv[argi]);fileNames++;break;
+    default:
+      stringstream ss;
+      ss<<"too many file names on command line ("<<fileNames<<")"<<endl;
+      ss<<"inFile: "<<options.inFileName<<endl;
+      ss<<"outFile: "<<options.outFileName<<endl;
+      ss<<"current file name: "<<argv[argi]<<endl;
+      throw AGAConvException(6,ss.str());
+    }
+    if(options.inFileName.string()[0]=='-') {
+      throw AGAConvException(7,"expected file name, option "+options.inFileName.string()+" provided.");
     }
     inc();
   }
 
-  // derive options from filenames
+  if(options.showHelpText) {
+    cout<<helpTextHeader<<endl;
+    cout<<"Options:"<<endl;
+    config.printCLOptions();
+    doneFlag=true;
+    return;
+  }
+  if(options.showHelpExtraText) {
+    cout << helpExtraTextHeader <<endl;
+    config.printCLOptionsAdvanced();
+    doneFlag=true;
+    return;
+  }
+  if(options.showVersion) {
+    printVersion();
+    doneFlag=true;
+    return;
+  }
+
+  config.resolveHcPath();
+
+  // All options not requiring any input files are handled above
+
+  options.checkAndSetOptions();
+  
+   if(options.outConfigFileName.string().size()>0) {
+    config.saveConfigFile(options.outConfigFileName);
+    if(options.verbose>=1)
+      cout<<"Saved config file: "<<options.outConfigFileName<<endl;
+    doneFlag=true;
+    return;
+  }
+  
+  if(options.conversionTool=="ham_convert") {
+    if(options.hcPath=="") {
+      throw AGAConvException(8,options.colorMode+" conversion requested, but hc_path is not set. Cannot find ham_convert. Use option --hc-path PATH or set hc_path = PATH in config file.");
+    }
+  }
+  
+  // Derive options from filenames
   if(options.hasInFile()) {
     if(isAnimFileName(options.inFileName)) {
       options.readAnim=true;
@@ -246,20 +277,52 @@ Options CommandLineParser::parse(int argc0, char **argv0) {
     if(isAnimFileName(options.outFileName)) {
       options.writeAnim=true;
     } else if(isCdxlFileName(options.outFileName)) {
+      options.cdxlEncode=true;
       options.writeCdxl=true;
     }
   }
-  if(options.sndFileName) {
+  if(options.hasSndFile()) {
     options.writeAnim=true;
   }
   
-  // perform consistency check of options
+  // Perform consistency check of options
   if(!options.checkConsistency()) {
-    cout<<"Error: inconsistent command line options."<<endl;
-    exit(1);
+    throw AGAConvException(9,"inconsistent command line options.");
   }
-  if(options.optimize==false) {
-    cout<<"Note: disabling empty bitplane filtering."<<endl;
+  if(options.optimizePngPalette==false && options.verbose>=1) {
+    if(options.stdCdxl)
+      cout<<"STD-CDXL: ";
+    else
+      cout<<"Note: ";
+    cout<<"Optimizing palette is off - not eliminating empty bitplanes."<<endl;
   }
-  return options;
+
+  if(options.resetDefaultConfigFile) {
+    if(argc!=2) {
+      throw AGAConvException(10,"option reset-config must be used as the only option.");
+    }
+    config.resetDefaultConfigFile();
+    doneFlag=true;
+    return;
+  }
+  if(options.saveDefaultConfigFile) {
+    config.saveDefaultConfigFile();
+    doneFlag=true;
+    return;
+  }
+
+  checkInOutFileOptions(options);
+
+  // Resolving tmpDir here ensures that --help-advanced does not print the PID
+  config.resolveTmpDir();
+
+  // Check input file
+  string inFileName=options.inFileName.string();
+  if(inFileName.length()>0) {
+    if(!Util::fileExists(inFileName)) {
+      throw AGAConvException(14,"file "+inFileName+" does not exist.");
+    }
+  }
 }
+
+} // namespace AGAConv

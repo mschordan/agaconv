@@ -1,21 +1,16 @@
-all: agaconv-encode
+all: agaconv
 
-docs:
-	doxygen agaconv-encode.doxygen
-	@echo
-	@echo "Doxygen html documentation available at src/html/index.html"
-
-VERSION=0.9.5
-DISTRFILENAME=agaconv-$(VERSION)
+doc:
+	doxygen agaconv.doxygen
 
 #development options (slows down compilation/execution, all passing)
 # -fsanitize=leak -fsanitize=bounds -fsanitize=bounds-strict
 #DEV_TEST_FLAGS=-fsanitize=address -ggdb -fno-omit-frame-pointer
 #DEV_TEST_FLAGS=-fanalyzer -Wno-analyzer-null-dereference 
 
-CXXFLAGS=-Wall -Werror -Wfatal-errors $(DEV_TEST_FLAGS)
+CXXFLAGS=-std=c++17 -Wall -Werror -Wfatal-errors $(DEV_TEST_FLAGS)
 
-EXEC = agaconv-encode
+EXEC = agaconv
 HEADERS = $(wildcard *.hpp)
 SOURCES = $(wildcard *.cpp)
 OBJECTS = $(SOURCES:.cpp=.o)
@@ -28,10 +23,18 @@ $(EXEC): $(OBJECTS)
 %.o: %.cpp 
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
+check:
+	./agaconv --help
+	./agaconv --help-advanced
+	./agaconv --verbose=2 --save-config test.config
+	./agaconv --verbose=2 --load-config test.config --width=640 --save-config test.config
+	rm test.config
+	@echo "================="
+	@echo "Smoke test passed"
+	@echo "================="
+
 clean:
 	rm -f $(OBJECTS) $(EXEC)
-	rm -f agaconv-*.tgz
-	rm -rf html
 
 depend:
 	makedepend -Y -- $(CXXFLAGS) -- $(SOURCES) 2> /dev/null
@@ -39,108 +42,117 @@ depend:
 # End of makefile
 # DO NOT DELETE
 
-CDXLFrame.o: CDXLFrame.hpp IffChunk.hpp ByteSizeTypeDefs.hpp Chunk.hpp
-CDXLFrame.o: CDXLHeader.hpp CDXLBlock.hpp IffBMHDChunk.hpp IffCMAPChunk.hpp
-CDXLFrame.o: IffDataChunk.hpp RGBColor.hpp IffCAMGChunk.hpp CDXLPalette.hpp
-CDXLFrame.o: ByteSequence.hpp IffILBMChunk.hpp IffBODYChunk.hpp Util.hpp
-CDXLFrame.o: Options.hpp
-IffCMAPChunk.o: IffCMAPChunk.hpp IffDataChunk.hpp IffChunk.hpp
-IffCMAPChunk.o: ByteSizeTypeDefs.hpp Chunk.hpp RGBColor.hpp
-StageAnimEdit.o: StageAnimEdit.hpp Stage.hpp Options.hpp IffANIMForm.hpp
-StageAnimEdit.o: IffChunk.hpp ByteSizeTypeDefs.hpp Chunk.hpp IffILBMChunk.hpp
-StageAnimEdit.o: IffCMAPChunk.hpp IffDataChunk.hpp RGBColor.hpp
-StageAnimEdit.o: IffBMHDChunk.hpp IffCAMGChunk.hpp IffBODYChunk.hpp
-StageAnimEdit.o: ByteSequence.hpp IffDPANChunk.hpp IffSXHDChunk.hpp
-StageAnimEdit.o: IffSBDYChunk.hpp CommandLineParser.hpp AGAConvException.hpp
-Options.o: Options.hpp
+IffCMAPChunk.o: AGAConvException.hpp IffCMAPChunk.hpp IffDataChunk.hpp
+IffCMAPChunk.o: IffChunk.hpp AmigaTypeDefs.hpp Chunk.hpp RGBColor.hpp
+CDXLDecode.o: CDXLDecode.hpp Stage.hpp Options.hpp Util.hpp AmigaTypeDefs.hpp
+CDXLDecode.o: CDXLFrame.hpp ByteSequence.hpp CDXLBlock.hpp IffChunk.hpp
+CDXLDecode.o: Chunk.hpp CDXLHeader.hpp IffBMHDChunk.hpp IffCAMGChunk.hpp
+CDXLDecode.o: IffCMAPChunk.hpp IffDataChunk.hpp RGBColor.hpp CDXLPalette.hpp
+CDXLDecode.o: IffILBMChunk.hpp IffBODYChunk.hpp AGAConvException.hpp
+CDXLDecode.o: CommandLineParser.hpp Configuration.hpp OSLayer.hpp
+IffANIMForm.o: IffANIMForm.hpp IffChunk.hpp AmigaTypeDefs.hpp Chunk.hpp
+IffANIMForm.o: IffILBMChunk.hpp IffBMHDChunk.hpp IffBODYChunk.hpp
+IffANIMForm.o: ByteSequence.hpp IffDataChunk.hpp RGBColor.hpp
+IffANIMForm.o: IffCAMGChunk.hpp IffCMAPChunk.hpp AGAConvException.hpp
+IffSXHDChunk.o: IffSXHDChunk.hpp IffChunk.hpp AmigaTypeDefs.hpp Chunk.hpp
+IffCAMGChunk.o: IffCAMGChunk.hpp IffChunk.hpp AmigaTypeDefs.hpp Chunk.hpp
+IffCAMGChunk.o: AGAConvException.hpp
+IffANHDChunk.o: IffANHDChunk.hpp IffChunk.hpp AmigaTypeDefs.hpp Chunk.hpp
 IffSBDYChunk.o: IffSBDYChunk.hpp IffDataChunk.hpp IffChunk.hpp
-IffSBDYChunk.o: ByteSizeTypeDefs.hpp Chunk.hpp
-IffCAMGChunk.o: IffCAMGChunk.hpp IffChunk.hpp ByteSizeTypeDefs.hpp Chunk.hpp
-IffANHDChunk.o: IffANHDChunk.hpp IffChunk.hpp ByteSizeTypeDefs.hpp Chunk.hpp
-CDXLFileGeneration.o: CDXLFileGeneration.hpp FileSequenceConversion.hpp
-CDXLFileGeneration.o: Stage.hpp Options.hpp AGAConvException.hpp
-CDXLFileGeneration.o: IffILBMChunk.hpp IffChunk.hpp ByteSizeTypeDefs.hpp
-CDXLFileGeneration.o: Chunk.hpp IffCMAPChunk.hpp IffDataChunk.hpp
-CDXLFileGeneration.o: RGBColor.hpp IffBMHDChunk.hpp IffCAMGChunk.hpp
-CDXLFileGeneration.o: IffBODYChunk.hpp ByteSequence.hpp
-IffDataChunk.o: IffDataChunk.hpp IffChunk.hpp ByteSizeTypeDefs.hpp Chunk.hpp
-CDXLBlock.o: CDXLBlock.hpp IffChunk.hpp ByteSizeTypeDefs.hpp Chunk.hpp
-FrameLoader.o: FrameLoader.hpp
-CommandLineParser.o: CommandLineParser.hpp Options.hpp Util.hpp
-CommandLineParser.o: ByteSizeTypeDefs.hpp
-CDXLEncode.o: CDXLEncode.hpp FileSequenceConversion.hpp Stage.hpp Options.hpp
-CDXLEncode.o: AGAConvException.hpp IffILBMChunk.hpp IffChunk.hpp
-CDXLEncode.o: ByteSizeTypeDefs.hpp Chunk.hpp IffCMAPChunk.hpp
-CDXLEncode.o: IffDataChunk.hpp RGBColor.hpp IffBMHDChunk.hpp IffCAMGChunk.hpp
-CDXLEncode.o: IffBODYChunk.hpp ByteSequence.hpp CDXLFrame.hpp CDXLHeader.hpp
-CDXLEncode.o: CDXLBlock.hpp CDXLPalette.hpp Util.hpp PngLoader.hpp
-CDXLEncode.o: FrameLoader.hpp
-CDXLPalette.o: CDXLPalette.hpp CDXLBlock.hpp IffChunk.hpp
-CDXLPalette.o: ByteSizeTypeDefs.hpp Chunk.hpp IffCMAPChunk.hpp
-CDXLPalette.o: IffDataChunk.hpp RGBColor.hpp Options.hpp
-IffSXHDChunk.o: IffSXHDChunk.hpp IffChunk.hpp ByteSizeTypeDefs.hpp Chunk.hpp
-IffBODYChunk.o: IffBODYChunk.hpp IffDataChunk.hpp IffChunk.hpp
-IffBODYChunk.o: ByteSizeTypeDefs.hpp Chunk.hpp RGBColor.hpp ByteSequence.hpp
-CDXLDecode.o: CDXLDecode.hpp Stage.hpp Options.hpp CDXLFrame.hpp IffChunk.hpp
-CDXLDecode.o: ByteSizeTypeDefs.hpp Chunk.hpp CDXLHeader.hpp CDXLBlock.hpp
-CDXLDecode.o: IffBMHDChunk.hpp IffCMAPChunk.hpp IffDataChunk.hpp RGBColor.hpp
-CDXLDecode.o: IffCAMGChunk.hpp CDXLPalette.hpp ByteSequence.hpp
-CDXLDecode.o: IffILBMChunk.hpp IffBODYChunk.hpp CommandLineParser.hpp
-CDXLDecode.o: AGAConvException.hpp Util.hpp
-PngLoader.o: Options.hpp PngLoader.hpp Stage.hpp FrameLoader.hpp
-PngLoader.o: AGAConvException.hpp RGBColor.hpp ByteSizeTypeDefs.hpp
-PngLoader.o: IffDataChunk.hpp IffChunk.hpp Chunk.hpp IffILBMChunk.hpp
-PngLoader.o: IffCMAPChunk.hpp IffBMHDChunk.hpp IffCAMGChunk.hpp
-PngLoader.o: IffBODYChunk.hpp ByteSequence.hpp Util.hpp
-Chunk.o: Options.hpp Chunk.hpp ByteSizeTypeDefs.hpp
-CDXLHeader.o: CDXLHeader.hpp CDXLBlock.hpp IffChunk.hpp ByteSizeTypeDefs.hpp
-CDXLHeader.o: Chunk.hpp IffBMHDChunk.hpp IffCMAPChunk.hpp IffDataChunk.hpp
-CDXLHeader.o: RGBColor.hpp IffCAMGChunk.hpp Options.hpp CDXLFrame.hpp
-CDXLHeader.o: CDXLPalette.hpp ByteSequence.hpp IffILBMChunk.hpp
-CDXLHeader.o: IffBODYChunk.hpp Util.hpp
-Stage.o: Stage.hpp Options.hpp
-IffUnknownChunk.o: IffUnknownChunk.hpp IffChunk.hpp ByteSizeTypeDefs.hpp
-IffUnknownChunk.o: Chunk.hpp IffDataChunk.hpp
-IffANIMForm.o: IffChunk.hpp ByteSizeTypeDefs.hpp Chunk.hpp IffANIMForm.hpp
-IffANIMForm.o: IffILBMChunk.hpp IffCMAPChunk.hpp IffDataChunk.hpp
-IffANIMForm.o: RGBColor.hpp IffBMHDChunk.hpp IffCAMGChunk.hpp
-IffANIMForm.o: IffBODYChunk.hpp ByteSequence.hpp
-IffDPANChunk.o: IffDPANChunk.hpp IffChunk.hpp ByteSizeTypeDefs.hpp Chunk.hpp
-RGBColor.o: RGBColor.hpp ByteSizeTypeDefs.hpp IffDataChunk.hpp IffChunk.hpp
+IffSBDYChunk.o: AmigaTypeDefs.hpp Chunk.hpp
+StageChunkInfo.o: StageChunkInfo.hpp Options.hpp Util.hpp AmigaTypeDefs.hpp
+StageChunkInfo.o: Stage.hpp IffANIMForm.hpp IffChunk.hpp Chunk.hpp
+StageChunkInfo.o: IffILBMChunk.hpp IffBMHDChunk.hpp IffBODYChunk.hpp
+StageChunkInfo.o: ByteSequence.hpp IffDataChunk.hpp RGBColor.hpp
+StageChunkInfo.o: IffCAMGChunk.hpp IffCMAPChunk.hpp AGAConvException.hpp
+CDXLPalette.o: CDXLPalette.hpp CDXLBlock.hpp IffChunk.hpp AmigaTypeDefs.hpp
+CDXLPalette.o: Chunk.hpp IffCMAPChunk.hpp IffDataChunk.hpp RGBColor.hpp
+CDXLPalette.o: AGAConvException.hpp Options.hpp Util.hpp
+CDXLHeader.o: CDXLHeader.hpp CDXLBlock.hpp IffChunk.hpp AmigaTypeDefs.hpp
+CDXLHeader.o: Chunk.hpp IffBMHDChunk.hpp IffCAMGChunk.hpp IffCMAPChunk.hpp
+CDXLHeader.o: IffDataChunk.hpp RGBColor.hpp AGAConvException.hpp
+CDXLHeader.o: CDXLFrame.hpp ByteSequence.hpp CDXLPalette.hpp IffILBMChunk.hpp
+CDXLHeader.o: IffBODYChunk.hpp Options.hpp Util.hpp
+OSLayerFallback.o: OSLayerFallback.hpp OSLayer.hpp
+IffBODYChunk.o: IffBODYChunk.hpp ByteSequence.hpp AmigaTypeDefs.hpp
+IffBODYChunk.o: IffDataChunk.hpp IffChunk.hpp Chunk.hpp RGBColor.hpp
+IffBODYChunk.o: AGAConvException.hpp
+StageILBMFileInfo.o: AGAConvException.hpp IffILBMChunk.hpp IffBMHDChunk.hpp
+StageILBMFileInfo.o: IffChunk.hpp AmigaTypeDefs.hpp Chunk.hpp
+StageILBMFileInfo.o: IffBODYChunk.hpp ByteSequence.hpp IffDataChunk.hpp
+StageILBMFileInfo.o: RGBColor.hpp IffCAMGChunk.hpp IffCMAPChunk.hpp
+StageILBMFileInfo.o: Options.hpp Util.hpp StageILBMFileInfo.hpp Stage.hpp
+PngLoader.o: PngLoader.hpp AGAConvException.hpp FrameLoader.hpp
+PngLoader.o: IffILBMChunk.hpp IffBMHDChunk.hpp IffChunk.hpp AmigaTypeDefs.hpp
+PngLoader.o: Chunk.hpp IffBODYChunk.hpp ByteSequence.hpp IffDataChunk.hpp
+PngLoader.o: RGBColor.hpp IffCAMGChunk.hpp IffCMAPChunk.hpp Stage.hpp
+PngLoader.o: Options.hpp Util.hpp
+Chunk.o: Chunk.hpp AmigaTypeDefs.hpp
+IffBMHDChunk.o: IffBMHDChunk.hpp IffChunk.hpp AmigaTypeDefs.hpp Chunk.hpp
+ByteSequence.o: ByteSequence.hpp AmigaTypeDefs.hpp
+RGBColor.o: RGBColor.hpp AmigaTypeDefs.hpp IffDataChunk.hpp IffChunk.hpp
 RGBColor.o: Chunk.hpp
-ByteSequence.o: ByteSequence.hpp ByteSizeTypeDefs.hpp
-IffChunk.o: IffChunk.hpp ByteSizeTypeDefs.hpp Chunk.hpp Options.hpp
-FileSequenceConversion.o: Options.hpp FileSequenceConversion.hpp Stage.hpp
-FileSequenceConversion.o: AGAConvException.hpp IffILBMChunk.hpp IffChunk.hpp
-FileSequenceConversion.o: ByteSizeTypeDefs.hpp Chunk.hpp IffCMAPChunk.hpp
-FileSequenceConversion.o: IffDataChunk.hpp RGBColor.hpp IffBMHDChunk.hpp
-FileSequenceConversion.o: IffCAMGChunk.hpp IffBODYChunk.hpp ByteSequence.hpp
-FileSequenceConversion.o: IffUnknownChunk.hpp Util.hpp
-StageILBMFileInfo.o: Options.hpp StageILBMFileInfo.hpp Stage.hpp
-StageILBMFileInfo.o: AGAConvException.hpp IffILBMChunk.hpp IffChunk.hpp
-StageILBMFileInfo.o: ByteSizeTypeDefs.hpp Chunk.hpp IffCMAPChunk.hpp
-StageILBMFileInfo.o: IffDataChunk.hpp RGBColor.hpp IffBMHDChunk.hpp
-StageILBMFileInfo.o: IffCAMGChunk.hpp IffBODYChunk.hpp ByteSequence.hpp
-IffBMHDChunk.o: IffBMHDChunk.hpp IffChunk.hpp ByteSizeTypeDefs.hpp Chunk.hpp
 AGAConvException.o: AGAConvException.hpp
-StageChunkInfo.o: StageChunkInfo.hpp Stage.hpp Options.hpp IffANIMForm.hpp
-StageChunkInfo.o: IffChunk.hpp ByteSizeTypeDefs.hpp Chunk.hpp
-StageChunkInfo.o: IffILBMChunk.hpp IffCMAPChunk.hpp IffDataChunk.hpp
-StageChunkInfo.o: RGBColor.hpp IffBMHDChunk.hpp IffCAMGChunk.hpp
-StageChunkInfo.o: IffBODYChunk.hpp ByteSequence.hpp AGAConvException.hpp
-IffILBMChunk.o: IffChunk.hpp ByteSizeTypeDefs.hpp Chunk.hpp IffILBMChunk.hpp
-IffILBMChunk.o: IffCMAPChunk.hpp IffDataChunk.hpp RGBColor.hpp
-IffILBMChunk.o: IffBMHDChunk.hpp IffCAMGChunk.hpp IffBODYChunk.hpp
-IffILBMChunk.o: ByteSequence.hpp IffANHDChunk.hpp IffSXHDChunk.hpp
-IffILBMChunk.o: IffSBDYChunk.hpp IffDPANChunk.hpp IffUnknownChunk.hpp
-agaconv-encode.o: IffANIMForm.hpp IffChunk.hpp ByteSizeTypeDefs.hpp Chunk.hpp
-agaconv-encode.o: IffILBMChunk.hpp IffCMAPChunk.hpp IffDataChunk.hpp
-agaconv-encode.o: RGBColor.hpp IffBMHDChunk.hpp IffCAMGChunk.hpp
-agaconv-encode.o: IffBODYChunk.hpp ByteSequence.hpp IffDPANChunk.hpp
-agaconv-encode.o: IffSXHDChunk.hpp IffSBDYChunk.hpp CommandLineParser.hpp
-agaconv-encode.o: Options.hpp StageAnimEdit.hpp Stage.hpp
-agaconv-encode.o: StageILBMFileInfo.hpp StageChunkInfo.hpp CDXLEncode.hpp
-agaconv-encode.o: FileSequenceConversion.hpp AGAConvException.hpp
-agaconv-encode.o: CDXLFrame.hpp CDXLHeader.hpp CDXLBlock.hpp CDXLPalette.hpp
-agaconv-encode.o: CDXLDecode.hpp
-Util.o: Util.hpp ByteSizeTypeDefs.hpp
+CDXLBlock.o: CDXLBlock.hpp IffChunk.hpp AmigaTypeDefs.hpp Chunk.hpp
+agaconv.o: CDXLDecode.hpp Stage.hpp Options.hpp Util.hpp AmigaTypeDefs.hpp
+agaconv.o: CDXLFrame.hpp ByteSequence.hpp CDXLBlock.hpp IffChunk.hpp
+agaconv.o: Chunk.hpp CDXLHeader.hpp IffBMHDChunk.hpp IffCAMGChunk.hpp
+agaconv.o: IffCMAPChunk.hpp IffDataChunk.hpp RGBColor.hpp CDXLPalette.hpp
+agaconv.o: IffILBMChunk.hpp IffBODYChunk.hpp CDXLEncode.hpp
+agaconv.o: FileSequenceConversion.hpp AGAConvException.hpp
+agaconv.o: CommandLineParser.hpp Configuration.hpp OSLayer.hpp
+agaconv.o: ExternalToolDriver.hpp StageAnimEdit.hpp StageChunkInfo.hpp
+agaconv.o: StageILBMFileInfo.hpp
+CDXLFrame.o: CDXLFrame.hpp ByteSequence.hpp AmigaTypeDefs.hpp CDXLBlock.hpp
+CDXLFrame.o: IffChunk.hpp Chunk.hpp CDXLHeader.hpp IffBMHDChunk.hpp
+CDXLFrame.o: IffCAMGChunk.hpp IffCMAPChunk.hpp IffDataChunk.hpp RGBColor.hpp
+CDXLFrame.o: CDXLPalette.hpp IffILBMChunk.hpp IffBODYChunk.hpp Util.hpp
+CDXLFrame.o: Options.hpp AGAConvException.hpp
+Util.o: Util.hpp AmigaTypeDefs.hpp AGAConvException.hpp
+OSLayer.o: OSLayer.hpp OSLayerFallback.hpp OSLayerLinux.hpp
+StageAnimEdit.o: StageAnimEdit.hpp Options.hpp Util.hpp AmigaTypeDefs.hpp
+StageAnimEdit.o: Stage.hpp AGAConvException.hpp CommandLineParser.hpp
+StageAnimEdit.o: Configuration.hpp OSLayer.hpp IffANIMForm.hpp IffChunk.hpp
+StageAnimEdit.o: Chunk.hpp IffILBMChunk.hpp IffBMHDChunk.hpp IffBODYChunk.hpp
+StageAnimEdit.o: ByteSequence.hpp IffDataChunk.hpp RGBColor.hpp
+StageAnimEdit.o: IffCAMGChunk.hpp IffCMAPChunk.hpp IffDPANChunk.hpp
+StageAnimEdit.o: IffSBDYChunk.hpp IffSXHDChunk.hpp
+Options.o: Options.hpp Util.hpp AmigaTypeDefs.hpp AGAConvException.hpp
+Configuration.o: Configuration.hpp OSLayer.hpp Options.hpp Util.hpp
+Configuration.o: AmigaTypeDefs.hpp AGAConvException.hpp
+IffDataChunk.o: IffDataChunk.hpp IffChunk.hpp AmigaTypeDefs.hpp Chunk.hpp
+ExternalToolDriver.o: ExternalToolDriver.hpp CDXLEncode.hpp ByteSequence.hpp
+ExternalToolDriver.o: AmigaTypeDefs.hpp CDXLFrame.hpp CDXLBlock.hpp
+ExternalToolDriver.o: IffChunk.hpp Chunk.hpp CDXLHeader.hpp IffBMHDChunk.hpp
+ExternalToolDriver.o: IffCAMGChunk.hpp IffCMAPChunk.hpp IffDataChunk.hpp
+ExternalToolDriver.o: RGBColor.hpp CDXLPalette.hpp IffILBMChunk.hpp
+ExternalToolDriver.o: IffBODYChunk.hpp FileSequenceConversion.hpp
+ExternalToolDriver.o: AGAConvException.hpp Options.hpp Util.hpp Stage.hpp
+ExternalToolDriver.o: OSLayer.hpp
+CDXLEncode.o: CDXLEncode.hpp ByteSequence.hpp AmigaTypeDefs.hpp CDXLFrame.hpp
+CDXLEncode.o: CDXLBlock.hpp IffChunk.hpp Chunk.hpp CDXLHeader.hpp
+CDXLEncode.o: IffBMHDChunk.hpp IffCAMGChunk.hpp IffCMAPChunk.hpp
+CDXLEncode.o: IffDataChunk.hpp RGBColor.hpp CDXLPalette.hpp IffILBMChunk.hpp
+CDXLEncode.o: IffBODYChunk.hpp FileSequenceConversion.hpp
+CDXLEncode.o: AGAConvException.hpp Options.hpp Util.hpp Stage.hpp
+CDXLEncode.o: PngLoader.hpp FrameLoader.hpp
+CommandLineParser.o: CommandLineParser.hpp Configuration.hpp OSLayer.hpp
+CommandLineParser.o: Options.hpp Util.hpp AmigaTypeDefs.hpp
+CommandLineParser.o: AGAConvException.hpp
+OSLayerLinux.o: OSLayerLinux.hpp
+FileSequenceConversion.o: FileSequenceConversion.hpp AGAConvException.hpp
+FileSequenceConversion.o: IffILBMChunk.hpp IffBMHDChunk.hpp IffChunk.hpp
+FileSequenceConversion.o: AmigaTypeDefs.hpp Chunk.hpp IffBODYChunk.hpp
+FileSequenceConversion.o: ByteSequence.hpp IffDataChunk.hpp RGBColor.hpp
+FileSequenceConversion.o: IffCAMGChunk.hpp IffCMAPChunk.hpp Options.hpp
+FileSequenceConversion.o: Util.hpp Stage.hpp IffUnknownChunk.hpp
+IffUnknownChunk.o: IffUnknownChunk.hpp IffChunk.hpp AmigaTypeDefs.hpp
+IffUnknownChunk.o: Chunk.hpp IffDataChunk.hpp
+IffDPANChunk.o: IffDPANChunk.hpp IffChunk.hpp AmigaTypeDefs.hpp Chunk.hpp
+IffDPANChunk.o: AGAConvException.hpp
+IffILBMChunk.o: IffILBMChunk.hpp IffBMHDChunk.hpp IffChunk.hpp
+IffILBMChunk.o: AmigaTypeDefs.hpp Chunk.hpp IffBODYChunk.hpp ByteSequence.hpp
+IffILBMChunk.o: IffDataChunk.hpp RGBColor.hpp IffCAMGChunk.hpp
+IffILBMChunk.o: IffCMAPChunk.hpp AGAConvException.hpp IffANHDChunk.hpp
+IffILBMChunk.o: IffDPANChunk.hpp IffSBDYChunk.hpp IffSXHDChunk.hpp
+IffILBMChunk.o: IffUnknownChunk.hpp
