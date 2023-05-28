@@ -213,8 +213,8 @@ then the default values are read from the config file and shown with this comman
 used then the advanced default values are read from the config file and shown
 with this command.
 
-## ADVANCED OPTIONS
-   
+## Advanced Options
+
 \--black-and-white
 : Convert video to black-and-white colors. This mode uses ffmpeg's 'gray' option.
 
@@ -234,12 +234,15 @@ best for most videos. However, since this string is simply passed through to
 ffmpeg one can experiment also with other ffmpeg dithering modes.
 
 \--screen-mode STRING
-: screen (resolution) mode, where STRING = auto|lores|hires|superhires. The
-default setting is 'auto', which means that the screen resolution is derived
-from the provided width parameter. For example if the provided width it less
-than or equal to 320 lores resolution is selected. If a value higher than 320
-and less or equal 640 is selected then hires modes is selected. Similar with
-superhires.
+: screen (resolution) mode, where STRING =
+auto|unspecified|lores|hires|superhires. The default setting is 'auto', which
+means that the screen resolution is derived from the provided width
+parameter. For example if the provided width it less than or equal to 320 lores
+resolution is selected. If a value higher than 320 and less or equal 640 is
+selected then hires modes is selected. Similar with 'superhires'. The setting
+'unspecified' should be used when converting CDXL videos for non-Amiga systems,
+to ensure that the video height is not rescaled as it is required for some
+Amiga native screen modes.
 
 \--install-config
 : Install the default config file in the respective OS specific location. On

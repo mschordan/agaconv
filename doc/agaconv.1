@@ -250,7 +250,7 @@ and shown with this command.
 show advanced command line options with default values.
 If a config file is used then the advanced default values are read from the
 config file and shown with this command.
-.SS ADVANCED OPTIONS
+.SS Advanced Options
 .TP
 .B \-\-black\-and\-white
 Convert video to black\-and\-white colors.
@@ -274,14 +274,18 @@ However, since this string is simply passed through to ffmpeg one can experiment
 also with other ffmpeg dithering modes.
 .TP
 .B \-\-screen\-mode STRING
-screen (resolution) mode, where STRING = auto|lores|hires|superhires.
+screen (resolution) mode, where STRING =
+auto|unspecified|lores|hires|superhires.
 The default setting is `auto', which means that the screen resolution is derived
 from the provided width parameter.
 For example if the provided width it less than or equal to 320 lores resolution
 is selected.
 If a value higher than 320 and less or equal 640 is selected then hires modes is
 selected.
-Similar with superhires.
+Similar with `superhires'.
+The setting `unspecified' should be used when converting CDXL videos for
+non\-Amiga systems, to ensure that the video height is not rescaled as it is
+required for some Amiga native screen modes.
 .TP
 .B \-\-install\-config
 Install the default config file in the respective OS specific location.

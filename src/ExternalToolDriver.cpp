@@ -152,17 +152,20 @@ void ExternalToolDriver::runFFMPEGVideoExtraction(const Options& options) {
     // Height 'auto' mode
     // ffmpeg vars: iw, ih; yscale: ratio=iw/width; height=ih/ratio*yscale (explicit values with iw, ih for ffmpeg)
     string divString="unset";
-    assert(options.resMode!=Options::GFX_UNSPECIFIED);
-    if(!options.screenModeLace) {
-      if(options.resMode==Options::GFX_SUPERHIRES)
-        divString="/4";
-      else if(options.resMode==Options::GFX_HIRES)
-        divString="/2";
-      else
-        divString="";
-      assert(options.resMode!=Options::GFX_AUTO);
-    } else {
+    if(options.resMode==Options::GFX_UNSPECIFIED) {
       divString="";
+    } else {
+      if(!options.screenModeLace) {
+        if(options.resMode==Options::GFX_SUPERHIRES)
+          divString="/4";
+        else if(options.resMode==Options::GFX_HIRES)
+          divString="/2";
+        else
+          divString="";
+        assert(options.resMode!=Options::GFX_AUTO);
+      } else {
+        divString="";
+      }
     }
     assert(divString!="unset");
     heightString="(ih"+divString+")"+"/(iw/"+std::to_string(options.width)+")*"+std::to_string(options.yScaleFactor);
@@ -285,7 +288,17 @@ void ExternalToolDriver::runHamConvert(Options& options) {
     hamConvertCommand+=(" diversity_"+std::to_string(options.hcDiversity));
   if(options.hcQuant!="auto")
     hamConvertCommand+=(" quant_"+options.hcQuant);
-  ExternalToolDriver::runTool(options, "java",hamConvertCommand, "ham_convert (converting PNG frames to IFF/ILBM frames)");
+
+  const string xvfbTool="xvfb-run";
+  const string javaTool="java";
+  // check xvfb-run (only relevant for MS Ubuntu app). If available use it, otherwise not.
+  if(_osLayer->isInstalledTool(xvfbTool) && _osLayer->isInstalledTool(javaTool)) {
+    // with xvfb-run
+    ExternalToolDriver::runTool(options, xvfbTool ,string("-a ")+javaTool+" "+hamConvertCommand, "ham_convert with xvfb-run (converting PNG frames to IFF/ILBM frames)");
+  } else {
+    // with java only (reports error if not installed)
+    ExternalToolDriver::runTool(options, javaTool, hamConvertCommand, "ham_convert (converting PNG frames to IFF/ILBM frames)");
+  }
 
   CDXLEncode stage;
   std::filesystem::path inFileWithPath=options.getTmpDirName()/

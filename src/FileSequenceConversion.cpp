@@ -183,7 +183,7 @@ void FileSequenceConversion::postVisitLastILBMChunk(IffILBMChunk* ilbmChunk) {
       UBYTE numPlanes=bmhdChunk->getNumPlanes();
 
       if(options.verbose>=1) {
-        cout<<"Processed "<<frames<<" frames."<<endl;
+        cout<<"Processed "<<frames<<" IFF/ILBM frames."<<endl;
       }
       if(options.verbose>=2) {
         cout<<"First frame file: "<<firstInFileName<<endl;

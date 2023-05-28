@@ -120,11 +120,13 @@ string CDXLGfxModes::killEHBFlagToString() {
 }  
 
 string CDXLGfxModes::resolutionModesToString() {
-  switch(resolutionModes) {
+  switch(static_cast<Options::GFX_RESOLUTION>(resolutionModes)) {
   case Options::GFX_UNSPECIFIED: return "unspecified";
   case Options::GFX_LORES: return "lores";
   case Options::GFX_HIRES: return "hires";
   case Options::GFX_SUPERHIRES: return "superhires";
+  case Options::GFX_ULTRAHIRES: return "ultrahires";
+  case Options::GFX_AUTO: return "auto";
     // Intentionally empty to trigger compiler warning
   }
   throw AGAConvException(303, "Internal error: wrong resolution code:"+std::to_string(resolutionModes));
@@ -433,7 +435,13 @@ bool CDXLHeader::isConsistent() {
   ULONG chunkSize=this->getLength()+getPaletteSize()+getVideoSize()+getTotalAudioSize()+getTotalPaddingBytes();
   if(chunkSize!=getCurrentFrameSize()) {
     cout<<"CDXLHeader inconsistent size: "<<chunkSize<<" != "<<getCurrentFrameSize()<<" (computed chunk size vs CDXL frame size)"<<endl;
-    cout<<"palette size:"<<getPaletteSize()<<endl;
+    cout<<"Length            : "<<this->getLength()<<endl;
+    cout<<"Palette size      : "<<getPaletteSize()<<endl;
+    cout<<"Video size        : "<<getVideoSize()<<endl;
+    cout<<"Total Audio size  : "<<getTotalAudioSize()<<endl;
+    cout<<"Total Padding size: "<<getTotalPaddingBytes()<<endl;
+    cout<<"Chunk size        : "<<chunkSize<<endl;
+    cout<<"Current Frame size: "<<getCurrentFrameSize()<<endl;
     return false;
   } else {
     return true;

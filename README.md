@@ -1,7 +1,7 @@
 # AGAConv
 
 ## Overview
-This is a retro computing just-for-fun project. AGAConv is a CDXL video converter for [Commodore-Amiga computers](https://en.wikipedia.org/wiki/Amiga). It can convert modern videos (MP4, etc.) into the CDXL format which can be played with [AGABlaster](https://mschordan.github.io/amiga/agablaster.html) on an AGA Commodore-Amiga computer. The first Commodore-Amiga computer with the AGA chipset was released in 1992. Commodore went bankrupt in April 1994.
+This is a retro computing just-for-fun project. AGAConv is a CDXL video converter for [Commodore-Amiga computers](https://en.wikipedia.org/wiki/Amiga). It can convert modern videos (MP4, etc.) into the CDXL format which can be played with [AGABlaster](https://cutt.ly/AGABlaster) on an AGA Commodore-Amiga computer. The first Commodore-Amiga computer with the AGA chipset was released in 1992. Commodore went bankrupt in April 1994.
 
 The CDXL format was created by [Commodore](https://en.wikipedia.org/wiki/Commodore_International) primarily for the [Commodore CDTV](https://en.wikipedia.org/wiki/Commodore_CDTV), released 1991, to permit playback of video from CD-ROM in the early 1990s. The [CDXL format](https://wiki.multimedia.cx/index.php/CDXL) is a simple streaming format, consisting of linear concatenated chunks (packets), each with an uncompressed frame and associated audio data. In addition to the original 12-bit colors, AGAConv also supports 24-bit colors, as supported by Commodore Amiga AGA systems released in 1992+.
 
@@ -33,7 +33,7 @@ Overview of supported features:
 ## How It Works
 
 AGAConv uses ffmpeg to extract video frames and audio data from any video format supported by ffmpeg and encodes them into a CDXL video. For HAM conversions it can integrate the tool [ham_convert](http://mrsebe.bplaced.net/blog/wordpress/?page_id=374) into the conversion pipeline. 
-The CDXL video can be played with [AGABlaster](https://cutt.ly/AGAConv) on a Commodore-Amiga computer.
+The CDXL video can be played with [AGABlaster](https://cutt.ly/AGABlaster) on a Commodore-Amiga computer.
 
 # Building from source
 
@@ -61,7 +61,7 @@ Builds the excutable 'bin/agaconv'.
 
 # Version
 
-Version: 1.0
+Version: 1.0.1
 
 # Author
 

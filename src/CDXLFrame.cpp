@@ -175,7 +175,7 @@ string CDXLFrame::toString() {
 
 void CDXLFrame::importVideo(IffILBMChunk* ilbm) {
   assert(ilbm);;
-  ilbm->uncompressBODYChunk();
+  ilbm->uncompressBODYChunk(); // no-op
   IffBODYChunk* body=ilbm->getBODYChunk();
   assert(body);
   UWORD w=header.getVideoWidth();
@@ -189,7 +189,7 @@ void CDXLFrame::importVideo(IffILBMChunk* ilbm) {
   if(planes>0&&lineLengthInBytes>0) {
     source=iffVideo->address(0);
   }
-  UWORD planeSize=h*lineLengthInBytes;
+  ULONG planeSize=h*lineLengthInBytes;
   // Reserve bytes for all bitplanes as one contigeous memory
   // This loop converts interleaved ILBM to bitplanes
   ByteSequence* newBitPlanarVideo=new ByteSequence(planeSize*planes);

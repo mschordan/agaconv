@@ -340,8 +340,8 @@ void Configuration::buildOptionsTable() {
   adjAspectVal<<std::setprecision(3)<<setw(4)<<opt.adjustAspectSelectorValue1;
   addOptionsEntry("color_mode",opt.colorMode, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},"STRING","color mode where STRING = aga8|..|aga2|ham8|ham6|ocs5|..|ocs2|ehb"); // => colorModeEnum, several vals (aga8, etc.)
   addOptionsEntry("fps",opt.fps, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},1,60,"frames per second");
-  addOptionsEntry("width",opt.width, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},128,1280,"width of video in pixels");
-  addOptionsEntry("height",opt.height, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF}, 1, 1200,"auto|NUMBER","height of video - 'auto' derives height for proper aspect ratio");
+  addOptionsEntry("width",opt.width, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},128,3840,"width of video in pixels");
+  addOptionsEntry("height",opt.height, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF}, 1, 2160,"auto|NUMBER","height of video - 'auto' derives height for proper aspect ratio");
   addOptionsEntry("frequency",opt.frequency, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},1,AGAConv::maxAmigaFrequency,"audio frequency");
   addOptionsEntry("audio_mode",opt.audioMode, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},"mono|stereo","audio mode"); // mono|stereo => stereo:bool
   addOptionsEntry("adjust_aspect",opt.adjustAspectMode, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},"VALUE","adjust ascpect ratio, where VALUE=FLOAT|"+opt.adjustAspectSelectorName1+"(="+adjAspectVal.str()+")");
@@ -362,7 +362,7 @@ void Configuration::buildOptionsTable() {
   addOptionsBool1("black_and_white",opt.blackAndWhite, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL, TI_CF},"convert video to black-and-white colors");
   addOptionsBool1("black_background",opt.reserveBlackBackgroundColor, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CF, TI_CL},"reserve black background color (only relevant on OCS systems)");
   addOptionsEntry("dither",opt.ditherMode, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL, TI_CF},"STRING","ffmpeg dithering mode when rescaling video, where STRING =floyd_steinberg|bayer:bayer_scale=X|sierra2");
-  addOptionsEntry("screen_mode",opt.screenMode, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CF, TI_CL},"STRING","screen (resolution) mode, where STRING = auto|lores|hires|superhires"); // => resMode:GFX_RESOLUTION, implicit with 'auto'
+  addOptionsEntry("screen_mode",opt.screenMode, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CF, TI_CL},"STRING","screen (resolution) mode, where STRING = auto|unspecified|lores|hires|superhires"); // => resMode:GFX_RESOLUTION, implicit with 'auto'
   addOptionsBool1("install_config",opt.installDefaultConfigFile, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL}, "install default config file");
   addOptionsBool1("uninstall_config",opt.uninstallDefaultConfigFile, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL}, "uninstall default config file");
   addOptionsBool1("reset_config",opt.resetDefaultConfigFile, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL}, "reset default config file to original values (keeps hc_path)");

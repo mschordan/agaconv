@@ -1,0 +1,41 @@
+Error numbers:
+
+Reported errors:   1-180 (with reserved gaps), total 120 (without internal)
+Internal errors: 300-308 (consecutive)       , total 128 (all)
+
+agaconv: 1-2
+Commandlineparser+Configuration: 3-39; 190-193, 300, 308
+  [reserved]: 194-199
+Options: 40-55; 301
+  [reserved]: 56-59 
+FileSequenceConversion: 60-65
+  [reserved]: 66-69 
+ExternalToolDriver: 70-79
+  [reserved: 80-89]
+
+CDXL
+CDXLEncode: 90-102; 302
+  [reserved: 103-109]
+CDXLDecode: 110-112
+  [reserved 113-119]
+CDXLHeader: 120-121; 303-304
+CDXLFrame: 122-123, 126
+CDXLPalette: 124-125; 305-307
+  [reserved 126-129]
+
+PngLoader: 130-133
+  [reserved 134-139]
+Iff*Chunk: 140-147
+  [reserved 148-149]
+StageChunkInfo: 150
+StageILBMFileInfo: 151
+  [reserved 152-159]
+StageAnimEdit: 160-169
+  [reserved: 170-179]
+Util: 180
+  [reserved: 181-189]
+
+[reserved 200+]
+
+List all existing error numbers:
+grep -oh "throw AGAConvException([0-9]*" *.cpp | sort -n -t'(' -k 2
