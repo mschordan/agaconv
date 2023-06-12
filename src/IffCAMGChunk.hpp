@@ -48,6 +48,7 @@ class IffCAMGChunk : public IffChunk {
   ULONG getViewMode();
   bool isHalfBrite();
   bool isHam();
+  bool isLores();
   bool isHires();
   bool isSuperHires();
   bool isLace();

@@ -18,6 +18,7 @@
 
 #include "IffBMHDChunk.hpp"
 
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 
@@ -94,10 +95,21 @@ string IffBMHDChunk::toString() {
   stringstream ss;
   ss<<indent()<<getName()<<" ["<<getDataSize()<<"]"<<endl;
   if(getLongToString()) {
+    const uint16_t colWidth=15;
     // '+' converts unsigned char to unsigned int, otherwise it would be printed as char.
-    ss<<indent()<<"Width: "<<+width<<endl; 
-    ss<<indent()<<"Height: "<<+height<<endl;
-    // TODO
+    ss<<indent()<<setw(colWidth)<<left<<"Width: "<<width<<endl; 
+    ss<<indent()<<setw(colWidth)<<left<<"Height: "<<height<<endl;
+    ss<<indent()<<setw(colWidth)<<left<<"XOrigin: "<<xOrigin<<endl;
+    ss<<indent()<<setw(colWidth)<<left<<"YOrigin: "<<yOrigin<<endl;
+    ss<<indent()<<setw(colWidth)<<left<<"Num Planes: "<<+numPlanes<<endl;
+    ss<<indent()<<setw(colWidth)<<left<<"Mask: "<<+mask<<endl;
+    ss<<indent()<<setw(colWidth)<<left<<"Compression: "<<+compression<<endl;
+    ss<<indent()<<setw(colWidth)<<left<<"Pad1: "<<+pad1 <<endl;
+    ss<<indent()<<setw(colWidth)<<left<<"Transp. col: "<<transClr<<endl;
+    ss<<indent()<<setw(colWidth)<<left<<"XAspect: "<< xAspect<<endl;
+    ss<<indent()<<setw(colWidth)<<left<<"YAspect: "<< yAspect<<endl;
+    ss<<indent()<<setw(colWidth)<<left<<"Page width: "<<pageWidth<<endl;
+    ss<<indent()<<setw(colWidth)<<left<<"Page height: "<<pageHeight<<endl;
     ss<<endl;
   }
   return ss.str();

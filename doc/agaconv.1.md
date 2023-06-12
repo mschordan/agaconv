@@ -88,9 +88,14 @@ additional frames on disk and not load them into memory, effectively adapting
 the frame rate (and quality) to the I/O bandwidth.
         
 \--width NUMBER
-: Width of video in pixels. The Amiga AGA graphics hardware
-supports three different resolutions, lowers, hires, superhires with 1 to 8
-bitplanes.
+: Width of video in pixels. The Amiga AGA graphics hardware supports three
+different resolutions, Lores, Hires, Superhires with 2 to 8 bitplanes. Maximum
+standard width for Lores is 320, for Hires 640, and for Superhires 1280. For the
+three specific widths of 384, 704, and 1344, overscan videos are generated
+(overscan is maximum standard width plus up to 64 pixels). Minimum video width
+is 128 and the width must be a multiple of 16. Note that AGABlaster gives the
+best frame rate if the width of a video is a multiple of 64, because this enables
+the 64 bit graphics access of the Amiga AGA architecture.
 
 \--frequency NUMBER
 : Set audio frequency. The Audio frequency determines how many bytes per second

@@ -266,6 +266,10 @@ void CDXLEncode::importILBMChunk(CDXLFrame& frame, IffILBMChunk* ilbmChunk) {
   }
 
   frame.header.initialize(bmhdChunk,cmapChunk,camgChunk);
+  if(options.resMode==Options::GFX_UNSPECIFIED) {
+    // clear Lores flag in case it has been set
+    frame.header.setResolutionModes(static_cast<UBYTE>(Options::GFX_UNSPECIFIED));
+  }
   if((options.verbose>=verbosityLevel)||options.debug) {
     cout<<".. encoding CDXL frame "<<frame.header.getCurrentFrameNr();
     cout<<" ("<<cmapChunk->numberOfColors()<<" colors, "<<+bmhdChunk->getNumPlanes()<<" bitplanes)";

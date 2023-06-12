@@ -42,6 +42,9 @@ enum ColorModeEnum {CM_HAM, CM_EHB, CM_AGA, CM_OCS};
 const uint32_t minPlanes=2;  
 const uint32_t minColors=Util::ULONGPow(2,minPlanes);
 const uint32_t maxAmigaFrequency=28836;
+const uint32_t maxLoresWidth=320+64;       // With overscan
+const uint32_t maxHiresWidth=640+64;       // With overscan
+const uint32_t maxSuperHiresWidth=1280+64; // With overscan
 
 struct Options {
   Options();
@@ -64,7 +67,6 @@ struct Options {
   double yScaleFactor=1.0;
   uint8_t numPlanes=1; // Internal, set by colorMode
 
-  // NOTE: more options: http://underpop.online.fr/f/ffmpeg/help/paletteuse.htm.gz
   std::string ditherMode="floyd_steinberg"; // floyd_steinberg|bayer:bayer_scale=2
   
   uint32_t ffDitherBayerScale=3;

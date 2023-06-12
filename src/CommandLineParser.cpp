@@ -162,7 +162,10 @@ void CommandLineParser::parse(int argc0, char **argv0, Configuration& config) {
       if(uint32_t res=config.getCLOptionNameArgs(optionName)) {
         if(res>0) {
           if(res==1) {
-            config.processCLOption(optionName,"true"); // TODO: BOOL0
+            if(optionName.size()>=4 && Util::hasPrefix("no-",optionName))
+              config.processCLOption(optionName,"false"); // bool0
+            else
+              config.processCLOption(optionName,"true"); // bool1
             inc();
             if(options.installDefaultConfigFile) {
               if(argc>2) {

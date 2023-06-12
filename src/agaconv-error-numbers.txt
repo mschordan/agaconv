@@ -1,7 +1,7 @@
 Error numbers:
 
 Reported errors:   1-180 (with reserved gaps), total 120 (without internal)
-Internal errors: 300-308 (consecutive)       , total 128 (all)
+Internal errors: 300-309 (consecutive)       , total 129 (all)
 
 agaconv: 1-2
 Commandlineparser+Configuration: 3-39; 190-193, 300, 308
@@ -25,7 +25,7 @@ CDXLPalette: 124-125; 305-307
 
 PngLoader: 130-133
   [reserved 134-139]
-Iff*Chunk: 140-147
+Iff*Chunk: 140-147, 309
   [reserved 148-149]
 StageChunkInfo: 150
 StageILBMFileInfo: 151

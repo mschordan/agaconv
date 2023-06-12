@@ -54,6 +54,7 @@ string IffCAMGChunk::toString() {
   if(getLongToString()) {
     // '+' converts unsigned char to unsigned int, otherwise it would be printed as char.
     ss<<indent()<<"HAM: "<<isHam()<<endl; 
+    ss<<indent()<<"Lores: "<<isLores()<<endl;
     ss<<indent()<<"Hires: "<<isHires()<<endl;
     ss<<indent()<<"SuperHires: "<<isSuperHires()<<endl;
     ss<<indent()<<"HalfBrite: "<<isHalfBrite()<<endl;
@@ -96,7 +97,10 @@ bool IffCAMGChunk::isHalfBrite() {
 bool IffCAMGChunk::isHam() {
   return viewMode&CAMG_HAM;
 }
-
+bool IffCAMGChunk::isLores() {
+  // Lores is default of no other mode is set in a CAMG chunk
+  return !(isHires()||isSuperHires());
+}
 bool IffCAMGChunk::isHires() {
   return viewMode&CAMG_HIRES;
 }
@@ -104,7 +108,10 @@ bool IffCAMGChunk::isSuperHires() {
   return viewMode&CAMG_SUPERHIRES;
 }
 void IffCAMGChunk::setLores() {
-  // nothing to do. Lores is default of no other mode is set.
+  // ensure no other screen resolution mode is set
+  if(isHires()||isSuperHires()) {
+    throw AGAConvException(309,"Internal error: inconsistent resolution modes in CAMG chunk.");
+  }
 }
 void IffCAMGChunk::setHires() {
   viewMode|=CAMG_HIRES;

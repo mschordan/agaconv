@@ -186,14 +186,14 @@ IffCAMGChunk* PngLoader::createIffCAMGChunk(IffBMHDChunk* bmhdChunk, Options& op
   IffCAMGChunk* camgChunk=new IffCAMGChunk();
 
   switch(options.resMode) {
-  case Options::GFX_UNSPECIFIED: {
+  case Options::GFX_AUTO: {
     assert(bmhdChunk);
     UWORD _width=bmhdChunk->getWidth();
-    if(_width>=0 && _width<=320) {
+    if(_width>=0 && _width<=AGAConv::maxLoresWidth) {
       camgChunk->setLores();
-    } else if(_width>=321 && _width<=640) {
+    } else if(_width<=AGAConv::maxHiresWidth) {
       camgChunk->setHires();
-    } else if(_width>=641 && _width<=1280) {
+    } else if(_width<=AGAConv::maxSuperHiresWidth) {
       camgChunk->setSuperHires();
     }
     break;
@@ -209,6 +209,9 @@ IffCAMGChunk* PngLoader::createIffCAMGChunk(IffBMHDChunk* bmhdChunk, Options& op
     break;
   case Options::GFX_ULTRAHIRES:
     camgChunk->setUltraHires(); // not supported, issues error message.
+    break;
+  case Options::GFX_UNSPECIFIED:
+    // leave it unspecified
     break;
   default:
     throw AGAConvException(130, "Unsupported graphics mode provided in options (PngLoader).");

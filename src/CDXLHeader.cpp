@@ -59,19 +59,18 @@ void CDXLHeader::initialize(IffBMHDChunk* bmhd, IffCMAPChunk* cmap, IffCAMGChunk
     info.encoding=RGB;
     info.planeArrangement=BIT_PLANAR;
   }
-  modes.resolutionModes=Options::GFX_LORES; // Default
-  if(camg->isHires()) {
+  modes.resolutionModes=Options::GFX_UNSPECIFIED; // Default
+  // Lores is determined based on hires/superhires, not explicitly
+  if(camg->isLores())
+    modes.resolutionModes=Options::GFX_LORES;
+  else if(camg->isHires())
     modes.resolutionModes=Options::GFX_HIRES;
-  } else if(camg->isSuperHires()) {
+  else if(camg->isSuperHires())
     modes.resolutionModes=Options::GFX_SUPERHIRES;
-  }
   if(camg->isLace()) {
     modes.resolutionModes|=(1<<3); // BIT 3: LACE
   }
-  // Possible refinement: fill up palette to numberOfBitplanes^2 if
-  // tools cannot handle varying number of colors
 }
-
 
 string CDXLHeader::fileTypeToString() {
   switch(fileType) {
@@ -129,7 +128,7 @@ string CDXLGfxModes::resolutionModesToString() {
   case Options::GFX_AUTO: return "auto";
     // Intentionally empty to trigger compiler warning
   }
-  throw AGAConvException(303, "Internal error: wrong resolution code:"+std::to_string(resolutionModes));
+  throw AGAConvException(308, "Internal error: wrong resolution code:"+std::to_string(resolutionModes));
 }
   
 UBYTE CDXLGfxModes::getUBYTE() {
@@ -214,36 +213,39 @@ void CDXLHeader::writeChunk() {
 
 string CDXLHeader::toString() {
   stringstream ss;
-  ss<<"File type: "<<fileTypeToString()<<endl;
-  ss<<"Encoding: "<<info.encodingToString()<<endl;
-  ss<<"Sound: "<<info.stereoToString()<<endl;
-  ss<<"Plane arrangement: "<<info.planeArrangementToString()<<endl;
-  ss<<"Current chunk size: "<<currentChunkSize<<endl;
-  ss<<"Previous chunk size: "<<previousChunkSize<<endl;
-  ss<<"Current frame number: "<<currentFrameNumber<<endl;
-  ss<<"Video width: "<<videoWidth<<endl;
-  ss<<"Video height: "<<videoHeight<<endl;
-  ss<<"Number of bitplanes: "<<numberOfBitplanes<<endl;
-  ss<<"[Video size]: "<<getVideoSize()<<endl;
-  ss<<"Palette size: "<<paletteSize<<endl;
-  ss<<"[Number of colors]: "<<getNumberOfColors()<<endl;
-  ss<<"[Bytes per color]: "<<getColorBytes()<<endl;
-  ss<<"Channel Audio size: "<<getChannelAudioSize()<<endl;
-  ss<<"Total Audio size: "<<getTotalAudioSize()<<endl;
-  ss<<"Frequency: "<<frequency<<endl;
-  ss<<"Fps: "<<+fps<<endl;
-  ss<<"Resolution mode: "<<modes.resolutionModesToString()<<endl;
-  ss<<"Color depth: "<<modes.colorDepthFlagToString()<<endl;
-  ss<<"KillEHBFlag: "<<modes.killEHBFlagToString()<<endl;
-  ss<<"[paddingMode]: "<<paddingModesToString()<<endl;
-  ss<<"Padding: 0x"
+  const uint16_t colWidth=24;
+  ss<<setw(colWidth)<<left<<"File type: "<<fileTypeToString()<<endl;
+  ss<<setw(colWidth)<<left<<"Encoding: "<<info.encodingToString()<<endl;
+  ss<<setw(colWidth)<<left<<"Sound: "<<info.stereoToString()<<endl;
+  ss<<setw(colWidth)<<left<<"Plane arrangement: "<<info.planeArrangementToString()<<endl;
+  ss<<setw(colWidth)<<left<<"Current chunk size: "<<currentChunkSize<<endl;
+  ss<<setw(colWidth)<<left<<"Previous chunk size: "<<previousChunkSize<<endl;
+  ss<<setw(colWidth)<<left<<"Current frame number: "<<currentFrameNumber<<endl;
+  ss<<setw(colWidth)<<left<<"Video width: "<<videoWidth<<endl;
+  ss<<setw(colWidth)<<left<<"Video height: "<<videoHeight<<endl;
+  ss<<setw(colWidth)<<left<<"Number of bitplanes: "<<numberOfBitplanes<<endl;
+  ss<<setw(colWidth)<<left<<"[Video size]: "<<getVideoSize()<<endl;
+  ss<<setw(colWidth)<<left<<"Palette size: "<<paletteSize<<endl;
+  ss<<setw(colWidth)<<left<<"[Number of colors]: "<<getNumberOfColors()<<endl;
+  ss<<setw(colWidth)<<left<<"[Bytes per color]: "<<getColorBytes()<<endl;
+  ss<<setw(colWidth)<<left<<"Channel Audio size: "<<getChannelAudioSize()<<endl;
+  ss<<setw(colWidth)<<left<<"Total Audio size: "<<getTotalAudioSize()<<endl;
+  ss<<setw(colWidth)<<left<<"Frequency: "<<frequency<<endl;
+  ss<<setw(colWidth)<<left<<"Fps: "<<+fps<<endl;
+  ss<<setw(colWidth)<<left<<"Screen resolution mode: "<<modes.resolutionModesToString()<<endl;
+  ss<<setw(colWidth)<<left<<"Color depth: "<<modes.colorDepthFlagToString()<<endl;
+  ss<<setw(colWidth)<<left<<"KillEHBFlag: "<<modes.killEHBFlagToString()<<endl;
+  ss<<setw(colWidth)<<left<<"[paddingMode]: "<<paddingModesToString()<<endl;
+  ss<<setw(colWidth)<<left<<"Padding: "
+    <<"0x"
     <<std::hex<<std::showbase // Show the 0x prefix
     <<std::setfill('0')
     <<std::internal           // Fill between the prefix and the number
     <<std::setw(3)
     <<(padding&0xfff)<<std::dec<<endl;
-  ss<<"reserved WORD: "<<reserved3<<endl;
-  ss<<"[isConsistent]: "<<(isConsistent()?"Yes":"No")<<endl;
+  ss<<setfill(' ');
+  ss<<setw(colWidth)<<left<<"reserved WORD: "<<+reserved3<<endl;
+  ss<<setw(colWidth)<<left<<"[isConsistent]: "<<(isConsistent()?"Yes":"No")<<endl;
   return ss.str();
 }
 

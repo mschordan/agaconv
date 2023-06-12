@@ -178,12 +178,14 @@ void Options::checkAndSetScreenMode() {
 
 void Options::handleAutoScreenMode() {
   if(resMode==Options::GFX_AUTO) {
-    if(width>=1280)
-      resMode=Options::GFX_SUPERHIRES;
-    else if(width>=640)
-      resMode=Options::GFX_HIRES;
-    else
+    if(width<=AGAConv::maxLoresWidth)
       resMode=Options::GFX_LORES;
+    else if(width<=AGAConv::maxHiresWidth)
+      resMode=Options::GFX_HIRES;
+    else if(width<=AGAConv::maxSuperHiresWidth)
+      resMode=Options::GFX_SUPERHIRES;
+    else
+      resMode=Options::GFX_UNSPECIFIED;
   }
 }
 

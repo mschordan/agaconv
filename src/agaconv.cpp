@@ -39,7 +39,7 @@ void runCDXLEncode(Options& options) {
 }
 
 int main(int argc, char **argv) {
-  string version="1.0.1";
+  string version="1.0.2";
   try {
     Configuration config;
     CommandLineParser clp;

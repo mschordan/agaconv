@@ -596,7 +596,6 @@ bool Configuration::loadConfigFile(std::filesystem::path configFile) {
       }
       lineNr++;
     }
-    //TODO: options.checkAndSetOptions();
     return true;
   }
   return false;
