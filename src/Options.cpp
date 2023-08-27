@@ -60,6 +60,7 @@ std::string Options::colorModeEnumToString() const {
   case CM_HAM: return "ham";
   case CM_EHB: return "ehb";
   case CM_OCS: return "ocs";
+  case CM_UNKNOWN: return "unknown";
   }
   throw AGAConvException(301,"unknown color mode enum "+std::to_string(colorModeEnum)+".");
 }
@@ -137,10 +138,16 @@ void Options::valueConsistencyChecks() {
   }
 }
 
+void Options::checkImpossibleCombinations() {
+  if(colorDepth==COL_24BIT && colorModeEnum==CM_EHB) {
+    throw AGAConvException(59, "EHB mode with 24 bit color depth is not allowed.");
+  }
+}
+
 void Options::checkAndSetOptions() {
   valueConsistencyChecks();
   checkAndSetColorMode();
-  checkAndSetColorDepth(); // Requires  checkAndSetColorMode()
+  checkAndSetColorDepthBasedOnColorMode(); // Requires  checkAndSetColorMode()
   checkAndSetScreenMode();
   handleAutoScreenMode();  // Requires checkAndSetScreenMode()
   checkAndSetAudioDataType();
@@ -148,8 +155,10 @@ void Options::checkAndSetOptions() {
   checkAndSetPaddingSize();
   checkVideoDimensionStride();
   checkAndConfigureStdCdxl();
+  checkAndSetColorDepthBasedOnColorDepthBits(); // overrides 'BasedOnColorMode' if not 0=auto
   checkAndSetFixedPlanes();
   checkAndSetAdjustAspect();
+  checkImpossibleCombinations();
 }
 
 void Options::checkVideoDimensionStride() {
@@ -222,41 +231,44 @@ void Options::checkAndSetAudioMode() {
   }
 }
 
-void Options::checkAndSetColorDepth(std::string colorDepthString) {
-  int colBits=std::stoi(colorDepthString);
-  colorDepthBits=(uint32_t)colBits;
-  checkAndSetColorDepth();
-}
-
-void Options::checkAndSetColorDepth() {
+void Options::checkAndSetColorDepthBasedOnColorDepthBits() {
   switch(colorDepthBits) {
-  case 0: // 'auto', set color depth based on color mode
-    switch(colorModeEnum) {
-    case CM_OCS:
-    case CM_EHB:
-      colorDepth=Options::COL_12BIT;break;
-    case CM_HAM:
-      switch(numPlanes) {
-      case 6:
-        colorDepth=Options::COL_12BIT;break;
-      case 8:
-        colorDepth=Options::COL_12BIT;break;
-      default:
-        throw AGAConvException(44, "HAM mode with wrong number of "+std::to_string(numPlanes)+" planes.");
-      }
-      break;
-    case CM_AGA:
-      colorDepth=Options::COL_24BIT;break;
-      // Intentionally no default case
-    }
+  case autoValue:
+    // default, keep as-is
+    break;
   case 12:
+    // override other modes
     colorDepth=Options::COL_12BIT;
     break;
   case 24:
+    // override other modes
     colorDepth=Options::COL_24BIT;
     break;
   default:
     throw AGAConvException(45, "unsupported color depth of "+std::to_string(colorDepthBits)+" bits selected.");
+  }
+}
+
+void Options::checkAndSetColorDepthBasedOnColorMode() {
+  switch(colorModeEnum) {
+  case CM_OCS:
+  case CM_EHB:
+    colorDepth=Options::COL_12BIT;break;
+  case CM_HAM:
+    switch(numPlanes) {
+    case 6:
+      colorDepth=Options::COL_12BIT;break;
+    case 8:
+      colorDepth=Options::COL_24BIT;break;
+    default:
+      throw AGAConvException(44, "HAM mode with wrong number of "+std::to_string(numPlanes)+" planes.");
+    }
+    break;
+  case CM_AGA:
+    colorDepth=Options::COL_24BIT;break;
+  case CM_UNKNOWN:
+    throw AGAConvException(58, "unknown color mode.");
+    // Intentionally no default case
   }
 }
 
@@ -281,22 +293,25 @@ void Options::checkAndSetColorMode() {
   bool foundValidConfig=false;
   uint8_t numPlanes=0;
   if(colorMode.size()==4) {
-    struct ColorModeConfig { string prefix; uint8_t start; uint8_t end; ColorModeEnum colorMode; };
+    struct ColorModeConfig { string prefix; uint8_t start; uint8_t end; ColorModeEnum colorModeEnum; };
     vector<ColorModeConfig> supportedColorModes={{"aga", 2, 8, ColorModeEnum::CM_AGA},
                                                  {"ocs", 2, 5, ColorModeEnum::CM_OCS},
                                                  {"ham", 6, 8, ColorModeEnum::CM_HAM}
     };
     for(auto config : supportedColorModes) {
+      if(!(colorMode[3]>='0'&&colorMode[3]<='9')) {
+        throw AGAConvException(56, "Incorrect specification of planes in color mode: "+this->colorMode);
+      }
       numPlanes=(uint8_t)(colorMode[3]-'0');
       if(colorMode.compare(0, config.prefix.size(), config.prefix)==0 && numPlanes>=config.start && numPlanes<=config.end) {
         if(config.prefix=="ham") {
           if(numPlanes==6) {
             foundValidConfig=true;
-            colorDepth=Options::COL_12BIT;
+            colorModeEnum=config.colorModeEnum;
             conversionTool="ham_convert"; // HAM can only be converted with ham_convert
           } else if(numPlanes==8) {
             foundValidConfig=true;
-            colorDepth=Options::COL_24BIT;
+            colorModeEnum=config.colorModeEnum;
             conversionTool="ham_convert"; // HAM can only be converted with ham_convert
           } else {
             foundValidConfig=false;
@@ -309,16 +324,19 @@ void Options::checkAndSetColorMode() {
   if(colorMode=="ehb") {
     foundValidConfig=true;
     numPlanes=6;
-    colorDepth=Options::COL_12BIT;
+    colorModeEnum=CM_EHB;
     // EHB can only be converted with ham_convert
     conversionTool="ham_convert";
   }
-  if(Util::hasPrefix("aga",colorMode)) {
+  if(numPlanes==0) {
+    throw AGAConvException(57, "wrong number of planes requested in color mode "+colorMode+".");
+  }
+  if(Util::hasPrefix("aga",colorMode) && numPlanes<=8) {
     if(numPlanes<minPlanes) {
       throw AGAConvException(47, "color mode "+colorMode+" not supported. At least "+std::to_string(minPlanes)+" planes are required.");
     }
     foundValidConfig=true;
-    colorDepth=Options::COL_24BIT;
+    colorModeEnum=CM_AGA;
     conversionTool="ffmpeg";
   }
   if(Util::hasPrefix("ocs",colorMode) && numPlanes<=5) {
@@ -326,7 +344,7 @@ void Options::checkAndSetColorMode() {
       throw AGAConvException(48, "color mode "+colorMode+" not supported. At least "+std::to_string(minPlanes)+" planes are required.");
     }
     foundValidConfig=true;
-    colorDepth=Options::COL_12BIT;
+    colorModeEnum=CM_OCS;
     conversionTool="ffmpeg";
   }
   if(!foundValidConfig) {
@@ -342,20 +360,10 @@ void Options::checkAndSetFixedPlanes() {
 }
 
 void Options::checkAndConfigureStdCdxl() {
-  if(stdCdxl&&stdCdxl24) {
-    throw AGAConvException(52,"options --std-cdxl and --std-cdxl24 cannot be combined.");
+  if(stdCdxl24) {
+    throw AGAConvException(52, "option --std-cdxl24 is no longer available. Use --std-cdxl instead.");
   }
-  if(stdCdxl||stdCdxl24) {
-    fixedPlanes=true;
-    if(stdCdxl) {
-      colorDepth=COLOR_DEPTH::COL_12BIT;
-    }
-    if(stdCdxl24) {
-      // stdCdxl24 = std-cdxl + color-depth=24
-      colorDepth=COLOR_DEPTH::COL_24BIT;
-      stdCdxl=true;
-      stdCdxl24=false;
-    }
+  if(stdCdxl) {
     checkAndConfigureStdCdxlFrequency();
   }
 }

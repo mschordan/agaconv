@@ -39,7 +39,7 @@ void runCDXLEncode(Options& options) {
 }
 
 int main(int argc, char **argv) {
-  string version="1.0.2";
+  string version="1.0.3";
   try {
     Configuration config;
     CommandLineParser clp;
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     if(clp.done())
       return 0;
     Options options=config.getOptions();
-    
+
     ////////////////
     // CDXL files //
     ////////////////

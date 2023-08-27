@@ -37,7 +37,7 @@ enum AudioDataType {
   AUDIO_DATA_TYPE_SWORD  // Not used
 };
 
-enum ColorModeEnum {CM_HAM, CM_EHB, CM_AGA, CM_OCS};
+enum ColorModeEnum {CM_UNKNOWN, CM_HAM, CM_EHB, CM_AGA, CM_OCS};
 
 const uint32_t minPlanes=2;  
 const uint32_t minColors=Util::ULONGPow(2,minPlanes);
@@ -54,7 +54,7 @@ struct Options {
   // Additional script options
   ///////////////////////////////
 
-  ColorModeEnum colorModeEnum=ColorModeEnum::CM_AGA;
+  ColorModeEnum colorModeEnum=ColorModeEnum::CM_UNKNOWN;
   std::string colorModeEnumToString() const;
   std::string colorMode="aga8";
   std::string screenMode="auto";
@@ -111,7 +111,7 @@ struct Options {
   bool writeIlbm=false;
   std::string audioMode="stereo";
   bool stereo=true; // audioMode
-  uint32_t colorDepthBits=24;
+  uint32_t colorDepthBits=autoValue;
   enum COLOR_DEPTH { COL_12BIT, COL_24BIT } colorDepth=COL_24BIT;
   uint32_t fps=24;
   // Default, irrelevant for CDXL, only relevant for ANIM
@@ -140,12 +140,12 @@ struct Options {
   GFX_RESOLUTION resMode=GFX_AUTO;
   enum PADDING_TYPE { PAD_UNSPECIFIED=0, PAD_NONE=1, PAD_16BIT=2, PAD_32BIT=3, PAD_64BIT=4 };
   PADDING_TYPE paddingMode=PAD_32BIT;
-  bool debug=false;
   uint32_t paddingSize=4;
+  bool debug=false;
   // Eliminates empty bitplanes, remaps colors. Must also be on for fixedPlanes (which are filled after all empty ones are removed)
   bool optimizePngPalette=true;
   bool stdCdxl=false;
-  bool stdCdxl24=false;
+  bool stdCdxl24=false;  // Depricated. Not required anymore.
   bool fixedPlanes=false;
   uint32_t reservedColorsNum=0;
   // If different to 0, then fixed number of planes is requested. Controlled by fixedPlanes flag.
@@ -173,18 +173,18 @@ private:
   void checkAndSetScreenMode();
   void checkAndSetAudioMode();
   void checkAndSetAudioDataType();
-  void checkAndSetColorDepth(std::string colorDepth);
-  void checkAndSetColorDepth();
+  void checkAndSetColorDepthBasedOnColorMode();
+  void checkAndSetColorDepthBasedOnColorDepthBits();
   void checkAndSetPaddingSize(std::string paddingSize);
   void checkAndSetPaddingSize();
   void checkAndSetColorMode();
   void checkAndSetAdjustAspect();
   void checkVideoDimensionStride();
   void handleAutoScreenMode();
-  // Overrides multiple options
-  void checkAndConfigureStdCdxl();
-  void checkAndConfigureStdCdxlFrequency();  
+  void checkAndConfigureStdCdxl();   // Overrides multiple options
+  void checkAndConfigureStdCdxlFrequency();
   void checkAndSetFixedPlanes();
+  void checkImpossibleCombinations();
 };
 
 } // namespace AGAConv

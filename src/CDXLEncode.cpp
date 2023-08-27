@@ -296,7 +296,9 @@ void CDXLEncode::importILBMChunk(CDXLFrame& frame, IffILBMChunk* ilbmChunk) {
   assert(frame.video);
 
   // Fill color palette and video data with fill data ensure fixed frame size, update header
-  if(options.fixedPlanesNum>0) {
+  // except it is a HAM6, HAM8, or EHB frame, in which case the planes are fixed anyways,
+  // but filling up would make it wrong, because these modes have extra planes.
+  if(options.fixedPlanesNum>0 && !camgChunk->isHam() && !camgChunk->isHalfBrite()) {
     if(options.debug) cout<<"DEBUG: fixed planes: "<<options.fixedPlanesNum<<endl;
     uint32_t oldNumPlanes=(uint32_t)frame.header.getNumberOfBitplanes();
     if(options.fixedPlanesNum<oldNumPlanes) {
@@ -440,9 +442,10 @@ void CDXLEncode::visitILBMChunk(IffILBMChunk* ilbmChunk) {
     delete ilbmChunk;
     delete &frame;
     if(options.stdCdxl) {
-      throw AGAConvException(101,"Standard CDXL: frame size of "+len+" is not 32bit aligned. This can reduce I/O speed by up to 50%. Not generating CDXL file.\nSuggestion: do not use option --std-cdxl. Custom CDXL uses 32bit padding to avoid this problem.");
+      throw AGAConvException(101,"Standard CDXL: frame size of "+len+" is not 32bit aligned. This can reduce I/O speed by up to 50%. Not generating CDXL file.\nSuggestion: slightly adjust video video aspect with --adjust-aspect=1.01. Alternatively, do not use option --std-cdxl, custom CDXL uses 32bit padding to avoid this problem.");
     } else {
-      throw AGAConvException(102,"Custom CDXL: frame size of "+len+" is not 32bit aligned. Inconsistent user configuration. Not generating CDXL file.");      
+      throw AGAConvException(102,"Custom CDXL: frame size of "+len+" is not 32bit aligned. Inconsistent user configuration. Not generating CDXL file."
+                             +" Padding mode: "+std::to_string(options.paddingMode)+" padding size: "+std::to_string(options.paddingSize)+".");      
     }
   }
   frame.header.setCurrentChunkSize(frameSize);

@@ -349,7 +349,6 @@ void Configuration::buildOptionsTable() {
   addOptionsEntry("load_config",opt.inConfigFileName, ToolInterfaceSet{TI_CDXL, TI_CL}, "FILE", "load user configuration file");
   addOptionsEntry("save_config",opt.outConfigFileName, ToolInterfaceSet{TI_CDXL, TI_CL}, "FILE", "save user configuration file");
   addOptionsBool1("std_cdxl",opt.stdCdxl, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},"standard CDXL with 12-bit colors");
-  addOptionsBool1("std_cdxl24",opt.stdCdxl24, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},"standard AGA CDXL with 24-bit colors");
   addOptionsEntry("hc_path",opt.hcPath, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},"PATH", "absolute file path to ham_convert");
   addOptionsBool1("cdxl_info",opt.cdxlInfo,ToolInterfaceSet{TI_CDXL, TI_CL}, "show all info of frame 1 of given CDXL video");
   addOptionsBool1("cdxl_info_all",opt.cdxlDecode,ToolInterfaceSet{TI_CDXL, TI_HIDDEN},"display info about all frames in given CDXL video");  
@@ -363,6 +362,7 @@ void Configuration::buildOptionsTable() {
   addOptionsBool1("black_background",opt.reserveBlackBackgroundColor, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CF, TI_CL},"reserve black background color (only relevant on OCS systems)");
   addOptionsEntry("dither",opt.ditherMode, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL, TI_CF},"STRING","ffmpeg dithering mode when rescaling video, where STRING =floyd_steinberg|bayer:bayer_scale=X|sierra2");
   addOptionsEntry("screen_mode",opt.screenMode, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CF, TI_CL},"STRING","screen (resolution) mode, where STRING = auto|unspecified|lores|hires|superhires"); // => resMode:GFX_RESOLUTION, implicit with 'auto'
+  addOptionsEntry("force_color_depth",opt.colorDepthBits, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL, TI_CF},12,24,"allows to force color depth in palette where NUMBER = auto|12|24");
   addOptionsBool1("install_config",opt.installDefaultConfigFile, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL}, "install default config file");
   addOptionsBool1("uninstall_config",opt.uninstallDefaultConfigFile, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL}, "uninstall default config file");
   addOptionsBool1("reset_config",opt.resetDefaultConfigFile, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL}, "reset default config file to original values (keeps hc_path)");
@@ -376,7 +376,6 @@ void Configuration::buildOptionsTable() {
   addOptionsBool1("iff_info",opt.ilbmInfo, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL},"show IFF info for given IFF file.");
   addOptionsEntry("in_file",opt.inFileName, ToolInterfaceSet{TI_ANIM, TI_CDXL_ADVANCED, TI_CF, TI_CL}, "FILE", "set input file (available for tool generated config)");
   addOptionsEntry("out_file",opt.outFileName, ToolInterfaceSet{TI_ANIM, TI_CDXL_ADVANCED, TI_CF, TI_CL}, "FILE", "set output file (available for tool generated config)");
-
   addOptionsEntry("pcm_file",opt.sndFileName, ToolInterfaceSet{TI_ANIM, TI_CL}, "FILE","name of audio PCM file");
   addOptionsBool1("anim_chunk_info",opt.chunkInfo, ToolInterfaceSet{TI_ANIM, TI_CL}, "show ANIM chunck info for entire ANIM video"); // 2 vals
   addOptionsBool0("no_anim_padding_fix",opt.paddingFix, ToolInterfaceSet{TI_ANIM, TI_CL, TI_CF},"do not apply padding fix in ANIM file"); // bool0 
@@ -384,7 +383,7 @@ void Configuration::buildOptionsTable() {
   addOptionsEntry("anim_play_rate",opt.playRate, ToolInterfaceSet{TI_ANIM, TI_CL, TI_CF}, 1, 255, "play rate. Must be set explicitly in ANIM files");
 
   // Hidden options
-  addOptionsEntry("color_depth",opt.colorDepthBits, ToolInterfaceSet{TI_CDXL, TI_HIDDEN},12,24,"auto|12|24"); // => colorSize
+  addOptionsBool1("std_cdxl24",opt.stdCdxl24, ToolInterfaceSet{TI_HIDDEN, TI_CL, TI_CF},"this option is not required anymore. Use --std-cdxl instead.");
   addOptionsEntry("cdxl_padding_size",opt.paddingSize, ToolInterfaceSet{TI_HIDDEN, TI_CF},1,8,"number of bytes for I/O access padding (relevant for I/O speed, 4 is best)");  // => paddingMode
   addOptionsBool1("debug",opt.debug, ToolInterfaceSet{TI_CDXL, TI_HIDDEN}, "debug mode, very slow");
   addOptionsEntry("audio_data_type",opt.audioDataTypeString, ToolInterfaceSet{TI_CDXL, TI_HIDDEN}, "u8|s8", "set audio data type."); // => audioDataType: AudioDataType  

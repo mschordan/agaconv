@@ -237,8 +237,7 @@ string CDXLHeader::toString() {
   ss<<setw(colWidth)<<left<<"KillEHBFlag: "<<modes.killEHBFlagToString()<<endl;
   ss<<setw(colWidth)<<left<<"[paddingMode]: "<<paddingModesToString()<<endl;
   ss<<setw(colWidth)<<left<<"Padding: "
-    <<"0x"
-    <<std::hex<<std::showbase // Show the 0x prefix
+    <<std::hex<<"0x"  // make base explicit, because std::showbase does not show 0x for zero.
     <<std::setfill('0')
     <<std::internal           // Fill between the prefix and the number
     <<std::setw(3)

@@ -145,23 +145,15 @@ default configuration in a separate file. Additional options can be specified on
 the command line.
         
 --std-cdxl
-: Select standard CDXL format with 12-bit colors. In a standard CDXL file each
-frame has to have the exact same size. **AGAConv** adjusts the provided frequency if
-necessary, to generate a video where each frame has the exact same size. In
-addition, it also ensures that all chunks in the CDXL file are 32-bit aligned,
-which can improve I/O speed of up to 50% with certain I/O controllers. Therefore
-the length of each audio data and graphics data chunk must be divisible by 4, to
-ensure that the next chunk starts at a 32-bit aligned offset in the CDXL file.
-
-\--std-cdxl24
-: Same as --std-cdxl but with AGA 24-bit colors. The 24-bit colors are stored as
-3-byte RGB values (same format as in ANIM and IFF palette chunks). The only
-difference to a 12-bit standard CDXL file is that the the color values have 3
-bytes instead of 2 bytes.
-
-    Note, if you do not use this option, you get by default a custom CDXL
-    Video with 24-bit colors which has the exact same quality, but is usually
-    smaller.
+: Select standard CDXL format. In a standard CDXL file each frame has to have
+the exact same size. **AGAConv** adjusts the provided frequency if necessary, to
+generate a video where each frame has the exact same size. In addition, it also
+ensures that all chunks in the CDXL file are 32-bit aligned, which can improve
+I/O speed of up to 50% with certain I/O controllers. Therefore the length of
+each audio data and graphics data chunk must be divisible by 4, to ensure that
+the next chunk starts at a 32-bit aligned offset in the CDXL file. Bit depth is
+chosen according to the color mode, agaX selects 24 bit mode. A 12-bit mode can
+be enforced for agaX modes with the extra option \--force-color-depth=12.
 
 \--hc-path PATH
 : Absolute file path to the directory of the conversion tool ham_convert. This
@@ -248,6 +240,19 @@ selected then hires modes is selected. Similar with 'superhires'. The setting
 'unspecified' should be used when converting CDXL videos for non-Amiga systems,
 to ensure that the video height is not rescaled as it is required for some
 Amiga native screen modes.
+
+\--force-color-depth auto|12|24
+: The default setting is 'auto'. The color depth is set automatically when the
+option --color-mode is used or by default, such that the best quality is
+achieved. Therefore this option can only be used to force reduced quality to
+12bit, or to use 24bit encoding when it does not improve quality because the
+selected color mode only uses 12bit color range.  Some Amiga games did indeed
+use AGA8 videos with 8 planes in 12bit color mode. This setting allows to
+reproduce those settings. However, in general this setting gives no improvement
+in quality and only exists for experimentation.
+
+    Note: \--color-mode=ehb \--force-color-mode=24 would create a non-existing
+    display mode and is rejected. All other combinations are supported.
 
 \--install-config
 : Install the default config file in the respective OS specific location. On
@@ -392,13 +397,18 @@ agaconv \--cdxl-info video.cdxl
 : Shows all entries of the first frame of the CDXL file video.cdxl
 
 agaconv video.mp4 video.cdxl \--std-cdxl
-: Encodes the CDXL video as standard 12-bit colors CDXL video in AGA8 (256
-colors per frame). For standard CDXL videos **AGAConv** adjusts the frequency
-such that all frames have the same size and all data chunks are 32-bit aligned.
+: Encodes the CDXL video as standard CDXL video. For standard CDXL videos
+**AGAConv** adjusts the frequency such that all frames have the same size and
+all data chunks are 32-bit aligned. For AGA modes std cdxl is encoded with 24bit
+colors by **AGAConv**, but can be forced to 12bit colors (for older CDXL
+players) with the extra option \--force-color-depth=12.
 
 agaconv video.mp4 video.cdxl \--std-cdxl \--color-mode=aga7
-: Encodes the CDXL video with 12-bit colors and 7 bitplanes (128 colors per
-frame). All other values are default **AGAConv** values.
+: Encodes the CDXL video with 7 bitplanes and 128 colors. For standard CDXL
+videos **AGAConv** adjusts the frequency such that all frames have the same size
+and all data chunks are 32-bit aligned. By default 24bit colors are used for AGA
+modes, and 12bit colors for OCS, EHB, and HAM6 modes. 12bit colors can be
+enforced also for AGA modes with \--force-color-depth=12.
 
 agaconv video.mp4 video.cdxl \--color-mode=ham8
 : Encodes the CDXL video in HAM8 format. HAM8 uses 24-bit colors. This requires
