@@ -72,10 +72,10 @@ class CDXLHeader : public CDXLBlock {
   CDXLHeader();
   CDXLHeader(IffBMHDChunk* bmhdChunk, IffCMAPChunk* cmap, IffCAMGChunk* camg);
   void initialize(IffBMHDChunk* bmhdChunk, IffCMAPChunk* cmap, IffCAMGChunk* camg);
-  void readChunk();
-  void writeChunk();
-  std::string toString();
-  ULONG getLength();
+  void readChunk() override;
+  void writeChunk() override;
+  std::string toString() override;
+  ULONG getLength() override;
   void setFileType(CDXLFileType fileType);
   std::string fileTypeToString();
   void setPreviousChunkSize(ULONG size);

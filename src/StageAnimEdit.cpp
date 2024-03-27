@@ -20,6 +20,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <sstream>
 
 #include "AGAConvException.hpp"
 #include "CommandLineParser.hpp"

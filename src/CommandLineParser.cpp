@@ -82,9 +82,7 @@ void CommandLineParser::splitArgvOnEqualSign(int argc0, char** argv0) {
     }
   }
   argc=argv.size();
-  int i=0;
   for (auto s:argv) {
-    i++;
   }
 }
 

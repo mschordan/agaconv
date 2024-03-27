@@ -32,8 +32,8 @@ class CDXLEncode : public FileSequenceConversion {
  public:
   void preVisitFirstFrame() override;
   void visitILBMChunk(IffILBMChunk*) override;
-  void postVisitLastILBMChunk(IffILBMChunk* ilbmChunk);
-  void run(Options& options);
+  void postVisitLastILBMChunk(IffILBMChunk* ilbmChunk) override;
+  void run(Options& options) override;
 
   // AUDIO
   ByteSequence* readAudioData();

@@ -35,11 +35,22 @@ Overview of supported features:
 AGAConv uses ffmpeg to extract video frames and audio data from any video format supported by ffmpeg and encodes them into a CDXL video. For HAM conversions it can integrate the tool [ham_convert](http://mrsebe.bplaced.net/blog/wordpress/?page_id=374) into the conversion pipeline. 
 The CDXL video can be played with [AGABlaster](https://cutt.ly/AGABlaster) on a Commodore-Amiga computer.
 
+## Requirements (Ubuntu)
+
+You need to install the following dependencies before you can build:
+
+* **sudo apt install make g++ libpng-dev man-db ffmpeg**
+
+## Requirements (MacOS)
+
+On MacOS you will need to install dependencies via [Homebrew](https://brew.sh):
+
+* **brew install libpng ffmpeg doxygen pandoc**
+
 # Building from source
 
 AGAConv can be built from source and run on Ubuntu as follows:
 
-* **sudo apt install make g++ libpng-dev man-db ffmpeg**
 * **cd agaconv**
 * **make -j6**
 
