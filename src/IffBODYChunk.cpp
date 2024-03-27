@@ -46,7 +46,6 @@ size_t IffBODYChunk::uncompressedLength() {
 }
 
 ByteSequence* IffBODYChunk::getUncompressedData() {
-  assert(this!=0);
   ByteSequence* byteSequence=new ByteSequence();
   // BODY was never compressed. Copy original BODY.
   for(IffDataChunkIterator i=begin();i!=end();++i) {

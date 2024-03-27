@@ -50,12 +50,12 @@ class CDXLFrame : public CDXLBlock {
   void readChunk() override;
   void writeChunk() override;
   void setOutFile(std::fstream* fstream) override;
-  ULONG getLength();
+  ULONG getLength() override;
   // Alignment defines the boundaries for which pad bytes should be computed
   // e.g. to align for LONG (=4 bytes): computePadBytes(4,13) = 3,
   // computePadBytes(4,4) = 0, computePadBytes(4,2) = 2
   static ULONG computePaddingBytes(ULONG alignment, ULONG size);
-  std::string toString();
+  std::string toString() override;
   // requires the header to be properly initialized
   void importVideo(IffILBMChunk* body);
   ByteSequence* readByteSequence(std::fstream* inFile, ULONG length);

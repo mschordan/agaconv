@@ -21,6 +21,7 @@
 #include <cassert>
 #include <cmath>
 #include <memory>
+#include <sstream>
 
 #include "AGAConvException.hpp"
 #include "CDXLEncode.hpp"
