@@ -646,7 +646,7 @@ void Configuration::resolveHcPath() {
           std::filesystem::path filePath=dir_entry.path();
           string fileName=filePath.stem();
           string fileExt=filePath.extension();
-          std::regex hamConvertRegex("ham_convert_[0-9]+(\\.[0-9])*");
+          std::regex hamConvertRegex("ham_convert_[0-9]+(\\.[0-9]+)*");
           if(std::regex_match(fileName, hamConvertRegex) && fileExt==".jar") {
             jarFiles.push_back(hcPath/filePath);
           }
