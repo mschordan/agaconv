@@ -128,9 +128,10 @@ IffSXHDChunk.o: IffSXHDChunk.hpp IffChunk.hpp AmigaTypeDefs.hpp Chunk.hpp
 IffUnknownChunk.o: IffUnknownChunk.hpp IffChunk.hpp AmigaTypeDefs.hpp
 IffUnknownChunk.o: Chunk.hpp IffDataChunk.hpp
 Options.o: Options.hpp Util.hpp AmigaTypeDefs.hpp AGAConvException.hpp
-OSLayer.o: OSLayer.hpp OSLayerFallback.hpp OSLayerLinux.hpp
+OSLayer.o: OSLayer.hpp OSLayerFallback.hpp OSLayerLinux.hpp OSLayerMacOs.hpp
 OSLayerFallback.o: OSLayerFallback.hpp OSLayer.hpp
 OSLayerLinux.o: OSLayerLinux.hpp
+OSLayerMacOs.o: OSLayerMacOs.hpp
 PngLoader.o: PngLoader.hpp AGAConvException.hpp FrameLoader.hpp
 PngLoader.o: IffILBMChunk.hpp IffBMHDChunk.hpp IffChunk.hpp AmigaTypeDefs.hpp
 PngLoader.o: Chunk.hpp IffBODYChunk.hpp ByteSequence.hpp IffDataChunk.hpp

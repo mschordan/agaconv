@@ -21,6 +21,7 @@
 #include <cassert>
 #include <cmath>
 #include <memory>
+#include <sstream>
 
 #include "AGAConvException.hpp"
 #include "CDXLEncode.hpp"
@@ -180,9 +181,16 @@ ByteSequence* CDXLEncode::readAudioData() {
       /* Convert from signed byte -128 .. 127
          to unsigned byte 0 .. 255
       */
-      int8_t audioByte0=(int8_t)_sndFile.get();
-      int8_t audioByte1=(int8_t)audioByte0+128;
-      UBYTE audioByte2=(UBYTE)audioByte1;
+      UBYTE audioByte2;
+      if (!_sndFile.eof()) {
+        int8_t audioByte0=(int8_t)_sndFile.get();
+        int8_t audioByte1=(int8_t)audioByte0+128;
+        audioByte2=(UBYTE)audioByte1;
+        // Make sure the eof bit is set before we try to read again
+        _sndFile.peek();
+      } else {
+        audioByte2 = 0;
+      }
       audioByteSequence->add(audioByte2);
     }
     return audioByteSequence;
@@ -196,9 +204,16 @@ ByteSequence* CDXLEncode::readAudioData() {
       /* Convert from signed byte -128 .. 127
 	 to unsigned byte 0 .. 255
       */
-      int8_t audioByte0=(int8_t)_sndFile.get();
-      int8_t audioByte1=(int8_t)audioByte0+128;
-      UBYTE audioByte2=(UBYTE)audioByte1;
+      UBYTE audioByte2;
+      if (!_sndFile.eof()) {
+        int8_t audioByte0=(int8_t)_sndFile.get();
+        int8_t audioByte1=(int8_t)audioByte0+128;
+        audioByte2=(UBYTE)audioByte1;
+        // Make sure the eof bit is set before we try to read again
+        _sndFile.peek();
+      } else {
+        audioByte2 = 0;
+      }
       if(j%2==0) {
         audioByteSequence->add(audioByte2);
       } else {
