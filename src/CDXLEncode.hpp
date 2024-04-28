@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2023 Markus Schordan
+    Copyright (C) 2019-2024 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -67,6 +67,7 @@ class CDXLEncode : public FileSequenceConversion {
 private:
   void addColorsForTargetPlanes(int targetPlanes, IffCMAPChunk* cmapChunk);
   void addColorsForTargetPlanes(int targetPlanes, CDXLPalette& palette);
+  void fillPaletteToMaxColorsOfPlanes(int targetPlanes, CDXLFrame& frame);
   void checkFrequencyForStdCdxl(Options& options);
 };
 

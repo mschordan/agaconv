@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2023 Markus Schordan
+    Copyright (C) 2019-2024 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -49,7 +49,7 @@ const uint32_t maxSuperHiresWidth=1280+64; // With overscan
 struct Options {
   Options();
   static const uint32_t autoValue=std::numeric_limits<uint32_t>::max();
-  
+
   ///////////////////////////////
   // Additional script options
   ///////////////////////////////
@@ -65,7 +65,7 @@ struct Options {
   uint32_t width=320;
   uint32_t height=autoValue;
   double yScaleFactor=1.0;
-  uint8_t numPlanes=1; // Internal, set by colorMode
+  uint8_t numPlanes=0; // Internal, set by colorMode
 
   std::string ditherMode="floyd_steinberg"; // floyd_steinberg|bayer:bayer_scale=2
   
@@ -102,7 +102,7 @@ struct Options {
   bool chunkInfo=false;
   bool firstChunkInfo=false;
   bool injectDPANChunk=false;
-  bool paddingFix=true;
+  bool animPaddingFix=true;
   bool readAnim=false;
   bool readCdxl=false;
   bool readIlbm=false;
@@ -121,6 +121,7 @@ struct Options {
   bool resetDefaultConfigFile=false;
   bool saveDefaultConfigFile=false;
   bool reserveBlackBackgroundColor=false;
+  bool enabled32BitCheck=true;
   
   std::filesystem::path inFileName;
   std::filesystem::path outFileName;
@@ -130,7 +131,7 @@ struct Options {
 
   std::string audioDataTypeString="u8";
   AudioDataType audioDataType=AUDIO_DATA_TYPE_UNDEFINED;
-  uint32_t frequency=28000;
+  uint32_t frequency=28032; // mod 2*fps=0 to not trigger adjustment
   bool hasInFile() const;
   bool hasOutFile() const;
   bool hasSndFile() const;
@@ -138,20 +139,25 @@ struct Options {
   uint64_t systemTimingConstant=3546895; // PAL system
   enum GFX_RESOLUTION { GFX_UNSPECIFIED=0, GFX_LORES=1, GFX_HIRES=2, GFX_SUPERHIRES=3, GFX_ULTRAHIRES=4, GFX_AUTO=5 };
   GFX_RESOLUTION resMode=GFX_AUTO;
-  enum PADDING_TYPE { PAD_UNSPECIFIED=0, PAD_NONE=1, PAD_16BIT=2, PAD_32BIT=3, PAD_64BIT=4 };
-  PADDING_TYPE paddingMode=PAD_32BIT;
-  uint32_t paddingSize=4;
+  enum PADDING_MODE { PAD_UNSPECIFIED=0, PAD_16BIT=2, PAD_32BIT=3, PAD_64BIT=4 };
+  uint32_t paddingSize=autoValue;
+  std::string alignmentString="auto";
+  Options::PADDING_MODE getPaddingMode() const;
+  std::string paddingModeToString(Options::PADDING_MODE) const;
+  uint32_t getPaddingSize() const;
+  std::string paddingSizeToString() const;
+  void checkAndSetPadding();
   bool debug=false;
-  // Eliminates empty bitplanes, remaps colors. Must also be on for fixedPlanes (which are filled after all empty ones are removed)
+  // Eliminates empty bitplanes, remaps colors. Must also be on for fixedPlanesFlag (which are filled after all empty ones are removed)
   bool optimizePngPalette=true;
-  bool stdCdxl=false;
-  bool stdCdxl24=false;  // Depricated. Not required anymore.
-  bool fixedPlanes=false;
+  bool fixedFrames=false;
+  bool fixedPlanesFlag=false;
   uint32_t reservedColorsNum=0;
-  // If different to 0, then fixed number of planes is requested. Controlled by fixedPlanes flag.
+  // If different to 0, then fixed number of planes is requested. Controlled by fixedPlanesFlag flag.
   uint32_t fixedPlanesNum=0;
   uint32_t maxColors() const;
   uint32_t maxColorsCorrected() const;
+  static const bool fillPaletteToMaxColorsOfPlanes=true;
   std::string audioModeToString() const;
   std::string ffmpegFrameNameSuffix() const;
   // Returns 000..0 for the number of frame zero digits
@@ -167,7 +173,7 @@ struct Options {
   double adjustAspectSelectorValue1=1.35;
   bool hasInputFile() const;
   bool hasOutputFile() const;
-  
+  bool isStdCdxl() const;
 private:
   void valueConsistencyChecks();
   void checkAndSetScreenMode();
@@ -175,14 +181,12 @@ private:
   void checkAndSetAudioDataType();
   void checkAndSetColorDepthBasedOnColorMode();
   void checkAndSetColorDepthBasedOnColorDepthBits();
-  void checkAndSetPaddingSize(std::string paddingSize);
   void checkAndSetPaddingSize();
   void checkAndSetColorMode();
   void checkAndSetAdjustAspect();
   void checkVideoDimensionStride();
   void handleAutoScreenMode();
-  void checkAndConfigureStdCdxl();   // Overrides multiple options
-  void checkAndConfigureStdCdxlFrequency();
+  void checkAndAdjustFrequencyFor32BitAlignedAudioChunk();
   void checkAndSetFixedPlanes();
   void checkImpossibleCombinations();
 };

@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2023 Markus Schordan
+    Copyright (C) 2019-2024 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@ void runCDXLEncode(Options& options) {
 }
 
 int main(int argc, char **argv) {
-  string version="1.0.3";
+  string version="1.1.0";
   try {
     Configuration config;
     CommandLineParser clp;
@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
     ////////////////
     
     // required
-    Chunk::paddingFix=options.paddingFix;
+    Chunk::animPaddingFix=options.animPaddingFix;
     Chunk::setDebug(options.debug);
     
     // CDXL encoding

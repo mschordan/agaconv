@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2023 Markus Schordan
+    Copyright (C) 2019-2024 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -412,6 +412,7 @@ ULONG CDXLHeader::getPaddingSize() {
 }
 void CDXLHeader::setPaddingSize(ULONG paddingSize) {
   switch(paddingSize) {
+  case Options::autoValue: setPaddingModes(0);break;
   case 0: setPaddingModes(0);break;
   case 1: setPaddingModes(1);break;
   case 2: setPaddingModes(2);break;
@@ -425,7 +426,7 @@ void CDXLHeader::setPaddingSize(ULONG paddingSize) {
 string CDXLHeader::paddingModesToString() {
   stringstream ss;
   if(getPaddingSize()==0) {
-    return "unspecified";
+    return "none";
   } else {
     ss<<getPaddingSize()*8<<"bit aligned";
     return ss.str();

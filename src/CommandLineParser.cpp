@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2023 Markus Schordan
+    Copyright (C) 2019-2024 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -82,10 +82,6 @@ void CommandLineParser::splitArgvOnEqualSign(int argc0, char** argv0) {
     }
   }
   argc=argv.size();
-  int i=0;
-  for (auto s:argv) {
-    i++;
-  }
 }
 
 bool CommandLineParser::done() {
@@ -120,7 +116,7 @@ void CommandLineParser::checkInOutFileOptions(Options& options) {
 
 void CommandLineParser::printVersion() {
   cout<<"agaconv version "<<version<<endl;
-  cout<<"Copyright (C) 2019-2023 Markus Schordan"<<endl;
+  cout<<"Copyright (C) 2019-2024 Markus Schordan"<<endl;
   cout<<"License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>."<<endl;
   cout<<"This is free software: you are free to change and redistribute it."<<endl;
   cout<<"There is NO WARRANTY, to the extent permitted by law."<<endl;
@@ -145,7 +141,7 @@ void CommandLineParser::parse(int argc0, char **argv0, Configuration& config) {
   }
 
   Options& options=Configuration::PrivateOptionsRestrictedAccessClient::getOptionsRef(config);
-
+  
   // Recognizes '=', splits where necessary and returns (newargc,newargv)
   splitArgvOnEqualSign(argc0, argv0);
   string commandName=argv[0];
@@ -293,7 +289,7 @@ void CommandLineParser::parse(int argc0, char **argv0, Configuration& config) {
     throw AGAConvException(9,"inconsistent command line options.");
   }
   if(options.optimizePngPalette==false && options.verbose>=1) {
-    if(options.stdCdxl)
+    if(options.fixedFrames)
       cout<<"STD-CDXL: ";
     else
       cout<<"Note: ";

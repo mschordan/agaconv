@@ -1,13 +1,13 @@
 Error numbers:
 
-Reported errors:   1-180 (with reserved gaps), total 124 (without internal)
-Internal errors: 300-302, 304-309       , total 133 (all)
+Reported errors:   1-209 (with reserved gaps), total 125 (without internal)
+Internal errors: 300-309                     , total 135 (all)
 
 agaconv: 1-2
 Commandlineparser+Configuration: 3-39; 190-193, 300, 308
   [reserved]: 194-199
-Options: 40-59; 301
-  [reserved]: - 
+Options: 40-59, 200-201; 301,303
+  [reserved]: 202-209
 FileSequenceConversion: 60-65
   [reserved]: 66-69 
 ExternalToolDriver: 70-79
@@ -35,7 +35,7 @@ StageAnimEdit: 160-169
 Util: 180
   [reserved: 181-189]
 
-[reserved 200+]
+[reserved 210+]
 
 List all existing error numbers:
 grep -oh "throw AGAConvException([0-9]*" *.cpp | sort -n -t'(' -k 2

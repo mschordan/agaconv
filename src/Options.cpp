@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2023 Markus Schordan
+    Copyright (C) 2019-2024 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 
 #include <vector>
 #include <cassert>
+#include <unordered_map>
 
 #include "AGAConvException.hpp"
 #include "Util.hpp"
@@ -66,12 +67,10 @@ std::string Options::colorModeEnumToString() const {
 }
 
 uint32_t Options::maxColors() const {
-  uint32_t planes;
   if(fixedPlanesNum>0)
-    planes=fixedPlanesNum;
+    return Util::ULONGPow(2,fixedPlanesNum);
   else
-    planes=numPlanes;
-  return Util::ULONGPow(2,planes);
+    return Util::ULONGPow(2,numPlanes);
 }
 
 uint32_t Options::maxColorsCorrected() const {
@@ -142,23 +141,9 @@ void Options::checkImpossibleCombinations() {
   if(colorDepth==COL_24BIT && colorModeEnum==CM_EHB) {
     throw AGAConvException(59, "EHB mode with 24 bit color depth is not allowed.");
   }
-}
-
-void Options::checkAndSetOptions() {
-  valueConsistencyChecks();
-  checkAndSetColorMode();
-  checkAndSetColorDepthBasedOnColorMode(); // Requires  checkAndSetColorMode()
-  checkAndSetScreenMode();
-  handleAutoScreenMode();  // Requires checkAndSetScreenMode()
-  checkAndSetAudioDataType();
-  checkAndSetAudioMode();
-  checkAndSetPaddingSize();
-  checkVideoDimensionStride();
-  checkAndConfigureStdCdxl();
-  checkAndSetColorDepthBasedOnColorDepthBits(); // overrides 'BasedOnColorMode' if not 0=auto
-  checkAndSetFixedPlanes();
-  checkAndSetAdjustAspect();
-  checkImpossibleCombinations();
+  if(fixedFrames&&getPaddingMode()!=PAD_UNSPECIFIED) {
+    throw AGAConvException(200, "Options --fixed-frames and alignment mode "+paddingModeToString(getPaddingMode())+" are not compatible.");
+  }
 }
 
 void Options::checkVideoDimensionStride() {
@@ -183,6 +168,7 @@ void Options::checkAndSetScreenMode() {
   } else {
     throw AGAConvException(41,"unknown resolution mode: "+screenMode);
   }
+  handleAutoScreenMode();
 }
 
 void Options::handleAutoScreenMode() {
@@ -272,20 +258,59 @@ void Options::checkAndSetColorDepthBasedOnColorMode() {
   }
 }
 
-void Options::checkAndSetPaddingSize(std::string paddingSize) {
-  paddingSize=std::stol(paddingSize);
-  checkAndSetPaddingSize();
+std::string Options::paddingSizeToString() const {
+  if(paddingSize==autoValue)
+    return std::to_string(0);
+  else
+    return std::to_string(paddingSize);
 }
 
-void Options::checkAndSetPaddingSize() {
+uint32_t Options::getPaddingSize() const {
+  return paddingSize;
+}
+
+Options::PADDING_MODE Options::getPaddingMode() const {
   switch(paddingSize) {
-  case 0: paddingMode=Options::PAD_UNSPECIFIED;break;
-  case 1: paddingMode=Options::PAD_NONE;break;
-  case 2: paddingMode=Options::PAD_16BIT;break;
-  case 4: paddingMode=Options::PAD_32BIT;break;
-  case 8: paddingMode=Options::PAD_64BIT;break;
+  case autoValue:
+  case 0: return Options::PAD_UNSPECIFIED;break;
+  case 2: return Options::PAD_16BIT;break;
+  case 4: return Options::PAD_32BIT;break;
+  case 8: return Options::PAD_64BIT;break;
   default:
-    throw AGAConvException(46, "unsupported padding size: "+std::to_string(paddingSize));
+    throw AGAConvException(46, "unsupported padding size: "+std::to_string(paddingSize)+". Supported sizes: 0, 2, 4, 8.");
+  }
+}
+
+std::string Options::paddingModeToString(Options::PADDING_MODE mode) const {
+  switch(mode) {
+  case Options::PAD_UNSPECIFIED: return "unspecified";
+  case Options::PAD_16BIT: return "16bit";
+  case Options::PAD_32BIT: return "32bit";
+  case Options::PAD_64BIT: return "64bit";
+  }
+  throw AGAConvException(303, "unknown padding mode "+std::to_string(mode));
+};
+
+void Options::checkAndSetPadding() {
+  static const std::unordered_map<std::string, uint32_t> mapping={
+    {"auto",std::numeric_limits<uint32_t>::max()},
+    {"none",0},
+    {"16bit",2},
+    {"32bit",4},
+    {"64bit",8}
+  };
+  auto iter=mapping.find(alignmentString);
+  if(iter!=mapping.end()) {
+    paddingSize=(*iter).second;
+  } else {
+    throw AGAConvException(201, "unsupported alignment mode: "+alignmentString);    
+  }
+      
+  // paddingSize=0 forces padding to be off
+  if(width%4==0 || paddingSize==0) {
+    return;
+  } else if(paddingSize==autoValue) {
+    paddingSize=4;
   }
 }
 
@@ -351,28 +376,19 @@ void Options::checkAndSetColorMode() {
     throw AGAConvException(49, "wrong color-mode selected: "+colorMode);
   }
   this->numPlanes=numPlanes;
+  checkAndSetColorDepthBasedOnColorMode();
 }
 
 void Options::checkAndSetFixedPlanes() {
-  if(fixedPlanes) {
+  if(fixedPlanesFlag) {
     fixedPlanesNum=numPlanes;
   }
 }
 
-void Options::checkAndConfigureStdCdxl() {
-  if(stdCdxl24) {
-    throw AGAConvException(52, "option --std-cdxl24 is no longer available. Use --std-cdxl instead.");
-  }
-  if(stdCdxl) {
-    checkAndConfigureStdCdxlFrequency();
-  }
-}
-
-void Options::checkAndConfigureStdCdxlFrequency() {
-  // Override audio padding options
-  paddingSize=1;
-  paddingMode=PAD_UNSPECIFIED;
-
+void Options::checkAndAdjustFrequencyFor32BitAlignedAudioChunk() {
+  // Frequency only needs to be adjusted if not 32Bit aligned
+  if(getPaddingMode()==PAD_32BIT||getPaddingMode()==PAD_64BIT)
+    return;
   uint32_t oldFrequency=frequency;
   uint32_t channelAdj=stereo?2:1;
   uint32_t adj=fps*(4/(channelAdj));
@@ -383,8 +399,8 @@ void Options::checkAndConfigureStdCdxlFrequency() {
   uint32_t totalAudioSize=(frequency/fps)*(channelAdj);
   bool frequencyDivPass=(frequency%fps==0);
   bool audioSize32BitAlignedPass=(totalAudioSize%4==0);
-  if(!(frequencyDivPass&&audioSize32BitAlignedPass)) {
-    throw AGAConvException(51, "Standard CDXL adjustment of audio data failed for adjusted frequency = "+std::to_string(frequency));
+  if(!frequencyDivPass || !audioSize32BitAlignedPass) {
+    throw AGAConvException(51, "Standard CDXL adjustment of frequency failed for 32bit audio data alignment = "+std::to_string(frequency));
   }
   if(verbose>=1) {
     if(oldFrequency!=frequency)
@@ -394,6 +410,30 @@ void Options::checkAndConfigureStdCdxlFrequency() {
     cout<<"Standard CDXL: Frequency divisibile by fps      : "<<(frequencyDivPass?"PASS":"FAIL")<<" ("<<frequency<<"="<<frequency/fps<<"*"<<fps<<"+"<<frequency%fps<<")"<<endl;
     cout<<"Standard CDXL: Frame audio data 32-bit aligned  : "<<(audioSize32BitAlignedPass?"PASS":"FAIL")<<" ("<<totalAudioSize<<"="<<totalAudioSize/4<<"*4+"<<totalAudioSize%4<<")"<<endl;
   }
+}
+
+bool Options::isStdCdxl() const {
+  return fixedFrames
+    ||(getPaddingMode()==PAD_UNSPECIFIED)
+    ;
+}
+
+void Options::checkAndSetOptions() {
+  valueConsistencyChecks();
+  checkAndSetFixedPlanes();
+  checkAndSetPadding();  
+  if(fixedFrames) {
+    fixedPlanesFlag=true;
+  }
+  checkAndSetColorMode();
+  checkAndSetScreenMode();
+  checkAndSetAudioDataType();
+  checkAndSetAudioMode();
+  checkVideoDimensionStride();
+  checkAndAdjustFrequencyFor32BitAlignedAudioChunk(); // if padding is not enabled, frequency is adjusted
+  checkAndSetColorDepthBasedOnColorDepthBits(); // overrides 'BasedOnColorMode' if not 0=auto
+  checkAndSetAdjustAspect();
+  checkImpossibleCombinations();
 }
 
 } // namespace AGAConv

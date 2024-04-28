@@ -10,7 +10,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include <vector>
 
 #include "AGAConvException.hpp"
 #include "Util.hpp"
@@ -348,7 +347,7 @@ void Configuration::buildOptionsTable() {
   addOptionsBool1("change_config",opt.saveDefaultConfigFile, ToolInterfaceSet{TI_CDXL, TI_CL}, "change default configuration - to be used with other options, e.g. --hc-path=PATH.");
   addOptionsEntry("load_config",opt.inConfigFileName, ToolInterfaceSet{TI_CDXL, TI_CL}, "FILE", "load user configuration file");
   addOptionsEntry("save_config",opt.outConfigFileName, ToolInterfaceSet{TI_CDXL, TI_CL}, "FILE", "save user configuration file");
-  addOptionsBool1("std_cdxl",opt.stdCdxl, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},"standard CDXL with 12-bit colors");
+  addOptionsBool1("fixed_frames",opt.fixedFrames, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},"all frames have the same length");
   addOptionsEntry("hc_path",opt.hcPath, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},"PATH", "absolute file path to ham_convert");
   addOptionsBool1("cdxl_info",opt.cdxlInfo,ToolInterfaceSet{TI_CDXL, TI_CL}, "show all info of frame 1 of given CDXL video");
   addOptionsBool1("cdxl_info_all",opt.cdxlDecode,ToolInterfaceSet{TI_CDXL, TI_HIDDEN},"display info about all frames in given CDXL video");  
@@ -378,22 +377,22 @@ void Configuration::buildOptionsTable() {
   addOptionsEntry("out_file",opt.outFileName, ToolInterfaceSet{TI_ANIM, TI_CDXL_ADVANCED, TI_CF, TI_CL}, "FILE", "set output file (available for tool generated config)");
   addOptionsEntry("pcm_file",opt.sndFileName, ToolInterfaceSet{TI_ANIM, TI_CL}, "FILE","name of audio PCM file");
   addOptionsBool1("anim_chunk_info",opt.chunkInfo, ToolInterfaceSet{TI_ANIM, TI_CL}, "show ANIM chunck info for entire ANIM video"); // 2 vals
-  addOptionsBool0("no_anim_padding_fix",opt.paddingFix, ToolInterfaceSet{TI_ANIM, TI_CL, TI_CF},"do not apply padding fix in ANIM file"); // bool0 
+  addOptionsBool0("no_anim_padding_fix",opt.animPaddingFix, ToolInterfaceSet{TI_ANIM, TI_CL, TI_CF},"do not apply padding fix in ANIM file"); // bool0 
   addOptionsBool1("inject_dpan",opt.injectDPANChunk, ToolInterfaceSet{TI_ANIM, TI_CL, TI_CF}, "inject DPAN chunk in ANIM file");  
   addOptionsEntry("anim_play_rate",opt.playRate, ToolInterfaceSet{TI_ANIM, TI_CL, TI_CF}, 1, 255, "play rate. Must be set explicitly in ANIM files");
+  addOptionsEntry("alignment",opt.alignmentString, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CF, TI_CL},"STRING","alignment of all data chunks, where STRING=auto|none|16bit|32bit|64bit.");  // => paddingSize => paddingMode
 
   // Hidden options
-  addOptionsBool1("std_cdxl24",opt.stdCdxl24, ToolInterfaceSet{TI_HIDDEN, TI_CL, TI_CF},"this option is not required anymore. Use --std-cdxl instead.");
-  addOptionsEntry("cdxl_padding_size",opt.paddingSize, ToolInterfaceSet{TI_HIDDEN, TI_CF},1,8,"number of bytes for I/O access padding (relevant for I/O speed, 4 is best)");  // => paddingMode
   addOptionsBool1("debug",opt.debug, ToolInterfaceSet{TI_CDXL, TI_HIDDEN}, "debug mode, very slow");
   addOptionsEntry("audio_data_type",opt.audioDataTypeString, ToolInterfaceSet{TI_CDXL, TI_HIDDEN}, "u8|s8", "set audio data type."); // => audioDataType: AudioDataType  
   // should be always true, therefore hidden. False only relevant for testing.
   addOptionsBool1("optimize_palette",opt.optimizePngPalette, ToolInterfaceSet{TI_HIDDEN, TI_CF},"eliminate empty bit planes and remap colors");
   addOptionsEntry("reserved_colors",opt.reservedColorsNum, ToolInterfaceSet{TI_HIDDEN, TI_CF, TI_CL},0,256,"number of colors to be reserved");
-  addOptionsBool1("fixed_planes",opt.fixedPlanes, ToolInterfaceSet{TI_CDXL, TI_HIDDEN, TI_CF},"select fixed number of planes in all frames according to color mode");
+  addOptionsBool1("fixed_planes",opt.fixedPlanesFlag, ToolInterfaceSet{TI_CDXL, TI_HIDDEN, TI_CF},"select fixed number of planes in all frames according to color mode");
   addOptionsEntry("extraction_tool",opt.extractionTool, ToolInterfaceSet{TI_CDXL, TI_HIDDEN}, "", "name of extraction tool");
   addOptionsEntry("conversion_tool",opt.conversionTool, ToolInterfaceSet{TI_CDXL, TI_HIDDEN}, "", "name of conversion tool");
   addOptionsEntry("fixed_frame_digits",opt.fixedFrameDigits, ToolInterfaceSet{TI_CDXL, TI_HIDDEN}, 3, 20,"number of digits used for frame numbers in tmp files");
+  addOptionsBool0("no_32bit_check",opt.enabled32BitCheck, ToolInterfaceSet{TI_CDXL, TI_HIDDEN}, "disable 32bit alignment check");  
 
   addRangesToOptionEntryDescriptions();
 }

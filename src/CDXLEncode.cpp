@@ -1,6 +1,6 @@
 /*
     AGAConv - CDXL video converter for Commodore-Amiga computers
-    Copyright (C) 2019-2023 Markus Schordan
+    Copyright (C) 2019-2024 Markus Schordan
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -103,9 +103,9 @@ void CDXLEncode::run(Options& options) {
     }
     _fps=(UBYTE)options.fps;
     _resolutionModes=(UBYTE)options.resMode;
-    _paddingModes=(UBYTE)options.paddingMode;
+    _paddingModes=(UBYTE)options.getPaddingMode();
     _frequency=options.frequency;
-    if(options.stdCdxl) {
+    if(options.fixedFrames) {
       checkFrequencyForStdCdxl(options);
     }
   }
@@ -242,6 +242,13 @@ void CDXLEncode::addColorsForTargetPlanes(int targetPlanes, CDXLPalette& palette
   }
 }
 
+void CDXLEncode::fillPaletteToMaxColorsOfPlanes(int targetPlanes, CDXLFrame& frame) {
+  auto palette = frame.palette;
+  // Add colors may also complete a plane's colors up to 2^fixedPlanesNum
+  addColorsForTargetPlanes(targetPlanes,frame.palette); // does not update frame header
+  // Update palettesize in header
+  frame.header.setPaletteSize(frame.palette.numberOfColors()*frame.header.getColorBytes());
+}
 
 void CDXLEncode::importILBMChunk(CDXLFrame& frame, IffILBMChunk* ilbmChunk) {
   uint32_t verbosityLevel=2;
@@ -298,36 +305,47 @@ void CDXLEncode::importILBMChunk(CDXLFrame& frame, IffILBMChunk* ilbmChunk) {
   // Fill color palette and video data with fill data ensure fixed frame size, update header
   // except it is a HAM6, HAM8, or EHB frame, in which case the planes are fixed anyways,
   // but filling up would make it wrong, because these modes have extra planes.
-  if(options.fixedPlanesNum>0 && !camgChunk->isHam() && !camgChunk->isHalfBrite()) {
-    if(options.debug) cout<<"DEBUG: fixed planes: "<<options.fixedPlanesNum<<endl;
-    uint32_t oldNumPlanes=(uint32_t)frame.header.getNumberOfBitplanes();
-    if(options.fixedPlanesNum<oldNumPlanes) {
-      stringstream ss;
-      ss<<"\n\nError: fixed number of "<<options.fixedPlanesNum<<" planes requested is lower than "<<oldNumPlanes<<" planes in input frame. '--optimize no' with ffmpeg generated frames selected? Bailing out. "<<endl;
-      throw AGAConvException(98, ss.str());
-    }
-    // Add colors may also complete a plane's colors up to 2^fixedPlanesNum
-    addColorsForTargetPlanes(options.fixedPlanesNum,frame.palette); // does not update numPlanes in BMHD
-    // Update palettesize in header
-    frame.header.setPaletteSize(frame.palette.numberOfColors()*frame.header.getColorBytes());
-    if(options.fixedPlanesNum>oldNumPlanes) {
-      if(options.verbose>=2) cout<<"[planes:"<<oldNumPlanes<<"->"<<options.fixedPlanesNum<<"] ";
-      // Determine plane size
-      UWORD lineLengthInBytes=Util::wordAlignedLengthInBytes(frame.header.getVideoWidth());
-      UWORD height=frame.header.getVideoHeight();
-      ULONG planeSize=(ULONG)lineLengthInBytes*(ULONG)height;
-      if(oldNumPlanes<options.fixedPlanesNum) {
-        ULONG planesToAdd=options.fixedPlanesNum-oldNumPlanes;
-        // Add all required empty planes at once
-        if(options.debug) cout<<"\nDEBUG: ADDING: planes:"<<planesToAdd<<" planesize: "<<planeSize<<" total: "<<planeSize*planesToAdd<<endl;
-        ULONG zeroDataToAdd=planeSize*planesToAdd;
-        for(ULONG i=0;i<zeroDataToAdd;i++) {
-          frame.video->add(0);
+  if(!camgChunk->isHam() && !camgChunk->isHalfBrite()) {
+    if(options.fixedPlanesNum==0) {
+      // only check for palette option
+      if(options.fillPaletteToMaxColorsOfPlanes) {
+        fillPaletteToMaxColorsOfPlanes((uint32_t)frame.header.getNumberOfBitplanes(),frame);
+      }
+    } else {
+      if(options.debug) cout<<"DEBUG: fixed planes: "<<options.fixedPlanesNum<<endl;
+      uint32_t oldNumPlanes=(uint32_t)frame.header.getNumberOfBitplanes();
+      if(options.fixedPlanesNum<oldNumPlanes) {
+        stringstream ss;
+        ss<<"\n\nError: fixed number of "<<options.fixedPlanesNum<<" planes requested is lower than "<<oldNumPlanes<<" planes in input frame. '--optimize no' with ffmpeg generated frames selected? Bailing out. "<<endl;
+        throw AGAConvException(98, ss.str());
+      }
+#if 1
+      fillPaletteToMaxColorsOfPlanes(options.fixedPlanesNum, frame);
+#else
+      // Add colors may also complete a plane's colors up to 2^fixedPlanesNum
+      addColorsForTargetPlanes(options.fixedPlanesNum,frame.palette); // does not update numPlanes in BMHD
+      // Update palettesize in header
+      frame.header.setPaletteSize(frame.palette.numberOfColors()*frame.header.getColorBytes());
+#endif
+      if(options.fixedPlanesNum>oldNumPlanes) {
+        if(options.verbose>=2) cout<<"[planes:"<<oldNumPlanes<<"->"<<options.fixedPlanesNum<<"] ";
+        // Determine plane size
+        UWORD lineLengthInBytes=Util::wordAlignedLengthInBytes(frame.header.getVideoWidth());
+        UWORD height=frame.header.getVideoHeight();
+        ULONG planeSize=(ULONG)lineLengthInBytes*(ULONG)height;
+        if(oldNumPlanes<options.fixedPlanesNum) {
+          ULONG planesToAdd=options.fixedPlanesNum-oldNumPlanes;
+          // Add all required empty planes at once
+          if(options.debug) cout<<"\nDEBUG: ADDING: planes:"<<planesToAdd<<" planesize: "<<planeSize<<" total: "<<planeSize*planesToAdd<<endl;
+          ULONG zeroDataToAdd=planeSize*planesToAdd;
+          for(ULONG i=0;i<zeroDataToAdd;i++) {
+            frame.video->add(0);
+          }
+          // Update numberOfBitplanes
+          assert(frame.header.getNumberOfBitplanes()+planesToAdd==options.fixedPlanesNum);
+          frame.header.setNumberOfBitplanes(options.fixedPlanesNum);
+          assert(frame.video->getDataSize()==frame.header.getNumberOfBitplanes()*planeSize);
         }
-        // Update numberOfBitplanes
-        assert(frame.header.getNumberOfBitplanes()+planesToAdd==options.fixedPlanesNum);
-        frame.header.setNumberOfBitplanes(options.fixedPlanesNum);
-        assert(frame.video->getDataSize()==frame.header.getNumberOfBitplanes()*planeSize);
       }
     }
   }
@@ -344,8 +362,6 @@ void CDXLEncode::importOptions(CDXLFrame& frame) {
   frame.setPaddingSize(options.paddingSize);
   
   if(_24BitColors) {
-    // Use CUSTOM file type if 24 bit color mode is used, otherwise keep STANDARD (initialized)
-    // frame.header.setFileType(CUSTOM);
     frame.palette.setColorMode(CDXLPalette::COL_24BIT);
   } else {
     frame.palette.setColorMode(CDXLPalette::COL_12BIT);
@@ -366,7 +382,7 @@ void CDXLEncode::importOptions(CDXLFrame& frame) {
   frame.header.setFrequency(_frequency);
   frame.header.setFps(_fps);
   frame.header.setPaddingModes(_paddingModes);
-  if(options.stdCdxl)
+  if(options.isStdCdxl())
     frame.header.setFileType(STANDARD);
   else
     frame.header.setFileType(CUSTOM);
@@ -436,16 +452,16 @@ void CDXLEncode::visitILBMChunk(IffILBMChunk* ilbmChunk) {
   
   // Compute frame size and set (check if 1st frame)
   ULONG frameSize=frame.getLength();
-  if(frame.getLength()%4!=0) {
+  if(options.enabled32BitCheck && frame.getLength()%4!=0) {
     auto len=std::to_string(frame.getLength());
     // Manual clean up in lack of ref-counted pointers
     delete ilbmChunk;
     delete &frame;
-    if(options.stdCdxl) {
-      throw AGAConvException(101,"Standard CDXL: frame size of "+len+" is not 32bit aligned. This can reduce I/O speed by up to 50%. Not generating CDXL file.\nSuggestion: slightly adjust video video aspect with --adjust-aspect=1.01. Alternatively, do not use option --std-cdxl, custom CDXL uses 32bit padding to avoid this problem.");
+    if(options.fixedFrames) {
+      throw AGAConvException(101,"Standard CDXL: frame size of "+len+" is not 32bit aligned. This can reduce I/O speed by up to 50%. Not generating CDXL file. Add option --align=32bit or --no-32bit-check.");
     } else {
       throw AGAConvException(102,"Custom CDXL: frame size of "+len+" is not 32bit aligned. Inconsistent user configuration. Not generating CDXL file."
-                             +" Padding mode: "+std::to_string(options.paddingMode)+" padding size: "+std::to_string(options.paddingSize)+".");      
+                             +" Padding mode: "+std::to_string(options.getPaddingMode())+" padding size: "+options.paddingSizeToString()+" Add option --align=32bit or --no-32bit-check.");      
     }
   }
   frame.header.setCurrentChunkSize(frameSize);
@@ -475,7 +491,7 @@ void CDXLEncode::postVisitLastILBMChunk(IffILBMChunk* ilbmChunk) {
   _outFile.close();
   if(options.verbose>=1) {
     cout<<"All frame chunks 32-bit aligned "
-        <<"("<<(options.stdCdxl?"Standard":"Custom")<<" CDXL check)"
+        <<"("<<(options.isStdCdxl()?"Standard":"Custom")<<" CDXL check)"
         <<endl;
     cout<<"Generated CDXL file "<<options.outFileName<<endl;
   }
