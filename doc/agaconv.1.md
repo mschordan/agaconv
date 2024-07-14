@@ -1,6 +1,6 @@
 % AGACONV(1) agaconv | Version 1.1
 % Markus Schordan
-% Feb 2024
+% Jul 2024
 
 # NAME
 agaconv - converts videos into CDXL format for AGA Commodore-Amiga computers
@@ -69,6 +69,37 @@ additional options.
 agaconv takes the following options:
 
 ## Basic Options
+
+\--format STRING
+: CDXL format where STRING = ctm-opt|std-opt|std-fixed (default: std-opt). This
+option selects specific properties of CDXL chunks. All three options ensure
+32-bit alignment of all chunks. This improves display speed.
+
+    Format option 'std-opt' is the default option and selects standard CDXL with
+    optimized chunk size. CDXL allows to use chunks of different size
+    in each frame, this option takes advantage of this CDXL feature and
+    minimizes file size by not including empty planes and also reducing the
+    color map size if possible.
+
+    Format option 'std-fixed' is a compatibility option for older CDXL players
+    that require that each frame has the exact same size. **AGAConv** adjusts
+    the provided frequency if necessary, to generate a video where each frame
+    has the exact same size. In addition, it also ensures that all chunks in the
+    CDXL file are 32-bit aligned, which can improve I/O speed of up to 50% with
+    certain I/O controllers. Therefore the length of each audio data and
+    graphics data chunk must be divisible by 4, to ensure that the next chunk
+    starts at a 32-bit aligned offset in the CDXL file. Bit depth is chosen
+    according to the color mode, agaX selects 24 bit mode. A 12-bit mode can be
+    enforced for agaX modes with the extra option \--force-color-depth=12.
+
+    The format option 'ctm-opt' aims to generate the smallest file size possible
+    and also maintains the exact specified frequency (no adjustment), but also
+    maintains 32-bit alignment of all chunks by introducing padding where
+    necessary (1 to 3 bytes).
+
+    AGABlaster can play all three CDXL variants with any combination of other
+    options.
+
 \--color-mode STRING
 : Color mode where STRING = aga8|..|aga2|ham8|ham6|ocs5|..|ocs2|ehb. The letters
 specify the screen mode, the digit determines the number of bitplanes. The
@@ -98,6 +129,10 @@ is 128 and the width must be a multiple of 16. Note that AGABlaster gives the
 best frame rate if the width of a video is a multiple of 64, because this enables
 the 64 bit graphics access of the Amiga AGA architecture.
 
+\--height auto|NUMBER
+: With 'auto' the height of the video is derived from the input video's aspect ratio. Otherwise
+the absolute value NUMBER is used.
+
 \--frequency NUMBER
 : Set audio frequency. The Audio frequency determines how many bytes per second
 are used for the audio data of the video. The higher the frequency, the better
@@ -107,10 +142,6 @@ is the audio quality.  Maximum value with the original Amiga audio hardware is
 \--audio-mode mono|stereo
 : Audio mode. The two modes mono and stereo can be selected. Default mode is stereo.
 In stereo mode twice the amount of audio data is used in comparison to mono.
-
-\--height auto|NUMBER
-: With 'auto' the height of the video is derived from the input video's aspect ratio. Otherwise
-the absolute value NUMBER is used.
 
 \--adjust-aspect FLOAT|hdstretched
 : This option allows to adjust the aspect ratio of the video. The default value
@@ -122,39 +153,6 @@ stretches the video in height.
     the Amiga's 4:3 screen on an HD screen. For other monitor configurations
     a floating point value FLOAT can be used.
 
-\--change-config
-: Change default configuration settings. Any other option can
-be added on the command line and the respective value is then set as default
-value in the default configuration. For example, it can be used with other
-options, e.g. --hc-path=PATH, to set the path for the ham_convert tool. It can
-also be used to set the default width to 640.
-
-    Example: agaconv \--change-config \--width=640
-
-    This sets the default width
-    of a converted video to a width of 640. Option \--help shows with each
-    option also its default values and can therefore be used to check the effect
-    of \--change-config to the default values.
-
-\--load-config FILE
-: Load a user configuration file with name FILE instead of the default
-configuration file.
-
-\--save-config FILE
-: Save the current configuration as FILE. This basically saves the current
-default configuration in a separate file. Additional options can be specified on
-the command line.
-        
---fixed-frames
-: This is a compatibility option for older CDXL players that require that each
-frame has the exact same size. **AGAConv** adjusts the provided frequency if necessary, to
-generate a video where each frame has the exact same size. In addition, it also
-ensures that all chunks in the CDXL file are 32-bit aligned, which can improve
-I/O speed of up to 50% with certain I/O controllers. Therefore the length of
-each audio data and graphics data chunk must be divisible by 4, to ensure that
-the next chunk starts at a 32-bit aligned offset in the CDXL file. Bit depth is
-chosen according to the color mode, agaX selects 24 bit mode. A 12-bit mode can
-be enforced for agaX modes with the extra option \--force-color-depth=12.
 
 \--hc-path PATH
 : Absolute file path to the directory of the conversion tool ham_convert. This
@@ -192,6 +190,9 @@ provided on the command line).
 : Show all info of frame 1 of given CDXL video FILE. This option is useful for
 checking the values of converted CDXL videos.  Example: agaconv --cdxl-info
 video.cdxl
+
+\--cdxl-info-all FILE
+: Show info of all frames in given CDXL video.
 
 \--verbose NUMBER
 : Select how verbose the output is during conversion. The value 0 means that no
@@ -253,7 +254,7 @@ reproduce those settings. However, in general this setting gives no improvement
 in quality and only exists for experimentation.
 
     Note: \--color-mode=ehb \--force-color-mode=24 would create a non-existing
-    display mode and is rejected. All other combinations are supported.
+    Amiga display mode and is rejected. All other combinations are supported.
 
 \--install-config
 : Install the default config file in the respective OS specific location. On
@@ -278,6 +279,29 @@ installation if one wishes to use ham_convert for HAM conversions. Therefore
 this option also reads the existing default config file before regenerating a
 new default config file.
 
+\--change-config
+: Change default configuration settings. Any other option can
+be added on the command line and the respective value is then set as default
+value in the default configuration. For example, it can be used with other
+options, e.g. --hc-path=PATH, to set the path for the ham_convert tool. It can
+also be used to set the default width to 640.
+
+    Example: agaconv \--change-config \--width=640
+
+    This sets the default width
+    of a converted video to a width of 640. Option \--help shows with each
+    option also its default values and can therefore be used to check the effect
+    of \--change-config to the default values.
+
+\--load-config FILE
+: Load a user configuration file with name FILE instead of the default
+configuration file.
+
+\--save-config FILE
+: Save the current configuration as FILE. This basically saves the current
+default configuration in a separate file. Additional options can be specified on
+the command line.
+        
 \--tmp-dir-prefix DIRNAME
 : Sets the prefix of the temporary directory name as DIRNAME. The default name
 is "tmp-agaconv" and it is recommended to keep this setting unmodified.
@@ -346,9 +370,6 @@ config files.
 : Set the output file name. This option is available for tool generated
 config files.
 
-\--alignment auto|none|16bit|32bit|64bit
-: Set the alignment for CDXL to align all chunks in CDXL file to (relevant for I/O speed, 32bit is best). The default 'auto' setting only enables padding only when the width of a video is not a multiple of 4. This option enables custom CDXL mode and padding. With this option also any frequency can be selected and it is not adjusted. This allows to select the best possible frequency for exact display rate w.r.t. to the audio period register AUDxPER on an Amiga and can give the most exact display rate (over a longer period of time) on an Amiga in comparison to a modern PC. It also pads graphics data if necessary to ensure 32bit alignment. 'none' forces alignment to be off which may give lower I/O speeds and lower frame rates. 'auto' only enables alignment-padding if necessary to get 32bit alignment.
-
 # ENVIRONMENT
 
 AGAConv uses the following environment variables
@@ -374,7 +395,6 @@ fails, AGAConv also returns an exit status of 1 and reports the invoked tool's s
 # EXAMPLES
 
 agaconv video.mp4 video.cdxl
-
 : Converts the mpeg video into a CDXL video. By default the CDXL video is encoded with
 a width of 320, lores resolution, 24-bit colors, AGA8 with 8 bitplanes (256
 colors per frame), 24 FPS, and stereo audio with 28000 Hz.
@@ -383,6 +403,22 @@ agaconv video.mp4 video.cdxl \--fps=25
 : Encodes the CDXL video with 25 frames per second and default values, using
 24-bit colors, AGA8 with 8 bitplanes (256 colors per frame), stereo audio with
 28000 Hz,
+
+agaconv \--std-opt video.mp4 video.cdxl \--fps=25
+: Encodes a standard CDXL video with 25 frames per second and optimized frame
+size, using 24-bit colors, AGA8 with 8 bitplanes (256 colors per frame), stereo
+audio with 28000 Hz,
+
+agaconv \--std-fixed video.mp4 video.cdxl \--fps=25
+: Encodes a standard CDXL video with 25 frames per second and fixed frame size,
+using 24-bit colors, AGA8 with 8 bitplanes (256 colors per frame), stereo audio
+with 28000 Hz,
+
+agaconv \--ctm-opt video.mp4 video.cdxl \--frequency 28112 \--fps=25
+: Encodes a customized CDXL video with 25 frames per second and minimal frame size, using 24-bit colors, AGA8 with 8 bitplanes (256 colors per frame), stereo
+audio with 28112 Hz. Custom CDXL mode allows to use any frequency, whereas
+the std modes adjust the frequency to have 32-bit aligned chunks. In custom
+mode data padding is used instead of adjustment.
 
 agaconv video.mp4 video.cdxl \--fps=25 \--width=640
 : Encodes the CDXL video with 25 frames per second and a width of 640
@@ -404,7 +440,7 @@ agaconv video.mp4 video.cdxl
 : Encodes the CDXL video as standard CDXL video with a width of 320. For standard CDXL videos
 **AGAConv** adjusts the frequency such that the audio chunk is 32bit aligned. For AGA modes Standard CDXL is encoded with 24bit colors.
 
-agaconv video.mp4 video.cdxl --color-mode=aga7
+agaconv video.mp4 video.cdxl \--color-mode=aga7
 : Encodes the CDXL video with 7 bitplanes and 128 colors. For standard CDXL
 videos **AGAConv** adjusts the frequency such that all frames have the same size
 and all data chunks are 32-bit aligned. By default 24bit colors are used for AGA

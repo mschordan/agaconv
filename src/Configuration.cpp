@@ -337,6 +337,7 @@ void Configuration::buildOptionsTable() {
   Options& opt=this->options;
   stringstream adjAspectVal;
   adjAspectVal<<std::setprecision(3)<<setw(4)<<opt.adjustAspectSelectorValue1;
+  addOptionsEntry("format",opt.formatName, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},"STRING","where STRING = ctm-opt|std-opt|std-fixed");
   addOptionsEntry("color_mode",opt.colorMode, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},"STRING","color mode where STRING = aga8|..|aga2|ham8|ham6|ocs5|..|ocs2|ehb"); // => colorModeEnum, several vals (aga8, etc.)
   addOptionsEntry("fps",opt.fps, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},1,60,"frames per second");
   addOptionsEntry("width",opt.width, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},128,3840,"width of video in pixels");
@@ -344,13 +345,9 @@ void Configuration::buildOptionsTable() {
   addOptionsEntry("frequency",opt.frequency, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},1,AGAConv::maxAmigaFrequency,"audio frequency");
   addOptionsEntry("audio_mode",opt.audioMode, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},"mono|stereo","audio mode"); // mono|stereo => stereo:bool
   addOptionsEntry("adjust_aspect",opt.adjustAspectMode, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},"VALUE","adjust ascpect ratio, where VALUE=FLOAT|"+opt.adjustAspectSelectorName1+"(="+adjAspectVal.str()+")");
-  addOptionsBool1("change_config",opt.saveDefaultConfigFile, ToolInterfaceSet{TI_CDXL, TI_CL}, "change default configuration - to be used with other options, e.g. --hc-path=PATH.");
-  addOptionsEntry("load_config",opt.inConfigFileName, ToolInterfaceSet{TI_CDXL, TI_CL}, "FILE", "load user configuration file");
-  addOptionsEntry("save_config",opt.outConfigFileName, ToolInterfaceSet{TI_CDXL, TI_CL}, "FILE", "save user configuration file");
-  addOptionsBool1("fixed_frames",opt.fixedFrames, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},"all frames have the same length");
   addOptionsEntry("hc_path",opt.hcPath, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF},"PATH", "absolute file path to ham_convert");
-  addOptionsBool1("cdxl_info",opt.cdxlInfo,ToolInterfaceSet{TI_CDXL, TI_CL}, "show all info of frame 1 of given CDXL video");
-  addOptionsBool1("cdxl_info_all",opt.cdxlDecode,ToolInterfaceSet{TI_CDXL, TI_HIDDEN},"display info about all frames in given CDXL video");  
+  addOptionsBool1("cdxl_info",opt.cdxlInfo,ToolInterfaceSet{TI_CDXL, TI_CL}, "show info of frame 1 of given CDXL video");
+  addOptionsBool1("cdxl_info_all",opt.cdxlDecode,ToolInterfaceSet{TI_CDXL, TI_CL},"show info of all frames in given CDXL video");  
   addOptionsEntry("verbose",opt.verbose, ToolInterfaceSet{TI_CDXL, TI_CL, TI_CF}, 0,3, "select how verbose output is during conversion");
   addOptionsBool1("version",opt.showVersion, ToolInterfaceSet{TI_CDXL, TI_CL}, "display program version and copyright");
   addOptionsBool1("help",opt.showHelpText, ToolInterfaceSet{TI_CDXL, TI_CL},"show basic command line options");
@@ -365,6 +362,9 @@ void Configuration::buildOptionsTable() {
   addOptionsBool1("install_config",opt.installDefaultConfigFile, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL}, "install default config file");
   addOptionsBool1("uninstall_config",opt.uninstallDefaultConfigFile, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL}, "uninstall default config file");
   addOptionsBool1("reset_config",opt.resetDefaultConfigFile, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL}, "reset default config file to original values (keeps hc_path)");
+  addOptionsBool1("change_config",opt.saveDefaultConfigFile, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL}, "change default configuration - to be used with other options, e.g. --hc-path=PATH.");
+  addOptionsEntry("load_config",opt.inConfigFileName, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL}, "FILE", "load user configuration file");
+  addOptionsEntry("save_config",opt.outConfigFileName, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL}, "FILE", "save user configuration file");
   addOptionsEntry("tmp_dir_prefix",opt.tmpDir, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CF, TI_CL}, "DIRNAME", "prefix of temporary directory name.");
   addOptionsBool1("keep_tmp_dir",opt.keepTmpFiles, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CL, TI_CF},"keep temporary directory (temporary dir is removed by default)");
   addOptionsEntry("hc_ham_quality",opt.hcHamQuality, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CF, TI_CL}, 0, 3,"ham_convert HAM conversion quality"); // ham8: 1-3, ham6 1-7
@@ -380,7 +380,7 @@ void Configuration::buildOptionsTable() {
   addOptionsBool0("no_anim_padding_fix",opt.animPaddingFix, ToolInterfaceSet{TI_ANIM, TI_CL, TI_CF},"do not apply padding fix in ANIM file"); // bool0 
   addOptionsBool1("inject_dpan",opt.injectDPANChunk, ToolInterfaceSet{TI_ANIM, TI_CL, TI_CF}, "inject DPAN chunk in ANIM file");  
   addOptionsEntry("anim_play_rate",opt.playRate, ToolInterfaceSet{TI_ANIM, TI_CL, TI_CF}, 1, 255, "play rate. Must be set explicitly in ANIM files");
-  addOptionsEntry("alignment",opt.alignmentString, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_CF, TI_CL},"STRING","alignment of all data chunks, where STRING=auto|none|16bit|32bit|64bit.");  // => paddingSize => paddingMode
+  addOptionsEntry("align",opt.alignmentString, ToolInterfaceSet{TI_CDXL_ADVANCED, TI_HIDDEN},"STRING","alignment of all data chunks, where STRING=auto|none|16bit|32bit|64bit.");  // => paddingSize => paddingMode
 
   // Hidden options
   addOptionsBool1("debug",opt.debug, ToolInterfaceSet{TI_CDXL, TI_HIDDEN}, "debug mode, very slow");

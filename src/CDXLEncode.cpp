@@ -43,7 +43,7 @@ void CDXLEncode::checkFrequencyForStdCdxl(Options& options) {
   if(_frequency % _fps != 0) {
     stringstream ss;
     ss<<"Frequency is not divisble by fps ("<<_frequency<<"/"<<+_fps<<"="<<((double)_frequency/_fps)<<"). Audio data cannot be devided into chunks of equal size. ... bailing out."<<endl;
-    ss<<"Stanard CDXL check: FAIL";
+    ss<<"CDXL 32bit alignment check: FAIL";
     throw AGAConvException(90, ss.str());
   }
   // To be 32-bit aligned, it must be a multiple 4 for mono, a multiple of 2 for stereo
@@ -52,7 +52,7 @@ void CDXLEncode::checkFrequencyForStdCdxl(Options& options) {
   if( (audioChannelDataSize*_audioMode) % 4 != 0 ) {
     stringstream ss;
     ss<<"Total audio data per frame not 32-bit aligned ("<<_frequency<<"Hz/"<<+_fps<<"FPS*"<<_audioMode<<" = "<<audioChannelDataSize*_audioMode<<" not a multiple of 4) ... bailing out."<<endl;
-    ss<<"Stanard CDXL check: FAIL"<<endl;
+    ss<<"32bit CDXL check: FAIL"<<endl;
     throw AGAConvException(91, ss.str());
   } 
   if(options.verbose>=2) {
@@ -105,6 +105,7 @@ void CDXLEncode::run(Options& options) {
     _fps=(UBYTE)options.fps;
     _resolutionModes=(UBYTE)options.resMode;
     _paddingModes=(UBYTE)options.getPaddingMode();
+    _frameLengthMode=options.fixedFrames?FLM_FIXED:FLM_VARIABLE;
     _frequency=options.frequency;
     if(options.fixedFrames) {
       checkFrequencyForStdCdxl(options);
@@ -136,11 +137,17 @@ int CDXLEncode::getMonoAudioDataLength() {
   // in number of words (16 bit aligned)
   if(frameLen%2 == 1) {
     frameLen--;
+    if(options.fixedFrames) {
+      throw AGAConvException(310, "Internal: fixed frames requested but audio data requires adjustment. Inconsistent data size.");
+    }
   }
   if(frameNrWithinSec==options.fps) {
     // Correct for last frame within second
     frameLen = options.frequency-_frameLenSum ;
     if(frameLen%2 == 1) {
+      if(options.fixedFrames) {
+        throw AGAConvException(311, "Internal: fixed frames requested but audio data requires adjustment at last frame in second. Inconsistent data size.");
+      }
       // This means an odd frequency is used. Use alternating +/- 1 correction based on frame nr.
       if(options.verbose>=3) {
         cout<<"CDXL Encoding leads to odd total audio length in last frame of second - applying adjustment:"<<endl;
@@ -197,7 +204,7 @@ ByteSequence* CDXLEncode::readAudioData() {
   }
   case 2: {
     ByteSequence* audioByteSequence=new ByteSequence();
-    // Reshuffle bytes for stero (ABABAB.. => AAA..BBB..)
+    // Reshuffle bytes for Amiga stero format (ABABAB.. => AAA..BBB..)
     list<UBYTE> tmp;
     int dataLen=getMonoAudioDataLength();
     for(int j=0;j<dataLen*_audioMode;j++) {
@@ -259,6 +266,14 @@ void CDXLEncode::addColorsForTargetPlanes(int targetPlanes, CDXLPalette& palette
 
 void CDXLEncode::fillPaletteToMaxColorsOfPlanes(int targetPlanes, CDXLFrame& frame) {
   auto palette = frame.palette;
+
+  if(options.colorDepth==Options::COL_24BIT && targetPlanes<2) {
+    // special case: for 24bit colors 1 plane has 2 colors with 2*3=6 bytes.
+    // Not multiple of 4, therefore fill for at least 2 planes's colors.
+    // Let p be the number of planes. Then 2^p mod 4 == 0 with p>=2.
+    targetPlanes=2;
+  }
+  
   // Add colors may also complete a plane's colors up to 2^fixedPlanesNum
   addColorsForTargetPlanes(targetPlanes,frame.palette); // does not update frame header
   // Update palettesize in header
@@ -324,7 +339,8 @@ void CDXLEncode::importILBMChunk(CDXLFrame& frame, IffILBMChunk* ilbmChunk) {
     if(options.fixedPlanesNum==0) {
       // only check for palette option
       if(options.fillPaletteToMaxColorsOfPlanes) {
-        fillPaletteToMaxColorsOfPlanes((uint32_t)frame.header.getNumberOfBitplanes(),frame);
+        uint32_t numPlanes=frame.header.getNumberOfBitplanes();
+        fillPaletteToMaxColorsOfPlanes(numPlanes,frame);
       }
     } else {
       if(options.debug) cout<<"DEBUG: fixed planes: "<<options.fixedPlanesNum<<endl;
@@ -334,14 +350,7 @@ void CDXLEncode::importILBMChunk(CDXLFrame& frame, IffILBMChunk* ilbmChunk) {
         ss<<"\n\nError: fixed number of "<<options.fixedPlanesNum<<" planes requested is lower than "<<oldNumPlanes<<" planes in input frame. '--optimize no' with ffmpeg generated frames selected? Bailing out. "<<endl;
         throw AGAConvException(98, ss.str());
       }
-#if 1
       fillPaletteToMaxColorsOfPlanes(options.fixedPlanesNum, frame);
-#else
-      // Add colors may also complete a plane's colors up to 2^fixedPlanesNum
-      addColorsForTargetPlanes(options.fixedPlanesNum,frame.palette); // does not update numPlanes in BMHD
-      // Update palettesize in header
-      frame.header.setPaletteSize(frame.palette.numberOfColors()*frame.header.getColorBytes());
-#endif
       if(options.fixedPlanesNum>oldNumPlanes) {
         if(options.verbose>=2) cout<<"[planes:"<<oldNumPlanes<<"->"<<options.fixedPlanesNum<<"] ";
         // Determine plane size
@@ -396,6 +405,7 @@ void CDXLEncode::importOptions(CDXLFrame& frame) {
   // Set frequency (CDXL extension)
   frame.header.setFrequency(_frequency);
   frame.header.setFps(_fps);
+  frame.header.setFrameLengthMode(_frameLengthMode);
   frame.header.setPaddingModes(_paddingModes);
   if(options.isStdCdxl())
     frame.header.setFileType(STANDARD);
@@ -472,11 +482,18 @@ void CDXLEncode::visitILBMChunk(IffILBMChunk* ilbmChunk) {
     // Manual clean up in lack of ref-counted pointers
     delete ilbmChunk;
     delete &frame;
+    if(options.adjustHeight) {
+      if(options.width%4!=0 && (options.getPaddingMode()==Options::PAD_32BIT || options.getPaddingMode()==Options::PAD_64BIT))
+        throw AGAConvException(101,"Video width of "
+                               +std::to_string(options.width)
+                               +" is not 32bit aligned and padding not enabled. This can reduce I/O speed by up to 50%. "
+                               +"Not generating CDXL file. Change video width by 16 pixel (plus or minus).");
+    }
     if(options.fixedFrames) {
-      throw AGAConvException(101,"Standard CDXL: frame size of "+len+" is not 32bit aligned. This can reduce I/O speed by up to 50%. Not generating CDXL file. Add option --align=32bit or --no-32bit-check.");
+      throw AGAConvException(101,"CDXL: frame size of "+len+" is not 32bit aligned. This can reduce I/O speed by up to 50%. Not generating CDXL file. Change video width by 16 pixel (plus or minus).");
     } else {
-      throw AGAConvException(102,"Custom CDXL: frame size of "+len+" is not 32bit aligned. Inconsistent user configuration. Not generating CDXL file."
-                             +" Padding mode: "+std::to_string(options.getPaddingMode())+" padding size: "+options.paddingSizeToString()+" Add option --align=32bit or --no-32bit-check.");      
+      throw AGAConvException(102,"CDXL: frame size of "+len+" is not 32bit aligned. Inconsistent user configuration. Not generating CDXL file."
+                             +" Padding mode: "+std::to_string(options.getPaddingMode())+" padding size: "+options.paddingSizeToString()+" Add option --ctm-opt.");      
     }
   }
   frame.header.setCurrentChunkSize(frameSize);
@@ -484,12 +501,10 @@ void CDXLEncode::visitILBMChunk(IffILBMChunk* ilbmChunk) {
     cout<<"DEBUG: frame "<<_currentFrameNr<<": setting current header chunksize = "<<frameSize<<endl;
     cout<<"DEBUG: "<<frame.header.toString()<<endl;
   }
-  if(_currentFrameNr==1) {
-    frame.header.setPreviousChunkSize(0);
-  } else {
-    frame.header.setPreviousChunkSize(_previousFrameSize);
-    _previousFrameSize=frameSize;
-  }
+
+  // _previousFrameSize is init to 0, and threfore 0 for first frame
+  frame.header.setPreviousChunkSize(_previousFrameSize);
+  _previousFrameSize=frameSize;
 
   if(_writeFile) {
     frame.setOutFile(&_outFile);

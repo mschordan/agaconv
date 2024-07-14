@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
     Chunk::setDebug(options.debug);
     
     // CDXL encoding
-    if(options.writeCdxl && options.cdxlEncode && !options.cdxlInfo && !options.cdxlDecode) {
+    if(options.writeCdxl && options.cdxlEncode && !options.cdxlInfo && !options.cdxlDecode &&!options.ilbmInfo) {
       // Extraction of png files
       ExternalToolDriver etd;
       etd.checkCommandProcessor();

@@ -11,6 +11,10 @@ AGAConv utilizes ffmpeg to extract video frames and audio data from videos and e
 Overview of supported features:
 
   * Configuration file allows to set any options as default.
+  * Formats:
+     - Standard CDXL with optimized bitplanes and frequency adjustment
+     - Standard CDXL with fixed frames and frequency adjustment
+     - Custom CDXL with optimized color palette and bitplanes, and exact frequency
   * Each CDXL frame with its own color palette
   * Color modes:
      - AGA8 to AGA2, 24 bit colors
@@ -72,11 +76,15 @@ Builds the excutable 'bin/agaconv'.
 
 # Version
 
-Version: 1.0.3
+Version: 1.1.0
 
 # Author
 
-Author: Markus Schordan, Copyright 2019-2023.
+Author: Markus Schordan, Copyright 2019-2024.
+
+# Contributors
+
+Contributor: Emiliano Esposito (2024) - MacOS layer support/fixes, last frame audio spike bugfix
 
 # License
 

@@ -110,7 +110,18 @@ void CDXLPalette::addColor(UBYTE red, UBYTE green, UBYTE blue) {
 
 // This method is only relevant when *reading* 12 bit palette and is not supported yet
 void CDXLPalette::addColor(CDXLColorType color) {
-  throw AGAConvException(125, "adding 12Bit colors to palette not supported.");
+  // TODO: convert 12bit CDXColorType to RGBColor
+  // RGBColor::convert4BitTo8Bit
+  // add method to RGBColor: RGBColor(CDXLColorType)
+  // rename CDXLColorType to CDXL12BitColorWord
+  // and then use: addColor(RGBColor(color))
+  UBYTE r=(color&0x0f00)>>8;
+  UBYTE g=(color&0x00f0)>>4;
+  UBYTE b=color&0x000f;
+  addColor(RGBColor(RGBColor::convert4BitTo8Bit(r),
+                    RGBColor::convert4BitTo8Bit(g),
+                    RGBColor::convert4BitTo8Bit(b)
+                    ));
 }
 
 void CDXLPalette::importColors(IffCMAPChunk* cmap) {

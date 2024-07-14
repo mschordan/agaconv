@@ -41,6 +41,7 @@ CDXLHeader::CDXLHeader()
   modes.resolutionModes=0;
   modes.colorDepthFlag=0;
   modes.killEHBFlag=0;
+  modes.frameLengthMode=0;
 }
 
 CDXLHeader::CDXLHeader(IffBMHDChunk* bmhd, IffCMAPChunk* cmap, IffCAMGChunk* camg):CDXLHeader() {
@@ -93,7 +94,7 @@ string CDXLInfo::encodingToString() {
 
 string CDXLGfxModes::toString() {
   stringstream ss;
-  ss<<killEHBFlagToString()<<":"<<colorDepthFlagToString()<<":"<<+resolutionModes<<endl;
+  ss<<variableLengthModeToString()<<":"<<killEHBFlagToString()<<":"<<colorDepthFlagToString()<<":"<<+resolutionModes<<endl;
   return ss.str();
 }
 
@@ -118,6 +119,13 @@ string CDXLGfxModes::killEHBFlagToString() {
     return "0";
 }  
 
+string CDXLGfxModes::variableLengthModeToString() {
+  if(frameLengthMode==1)
+    return "variable-length";
+  else
+    return "fixed-length";
+}  
+
 string CDXLGfxModes::resolutionModesToString() {
   switch(static_cast<Options::GFX_RESOLUTION>(resolutionModes)) {
   case Options::GFX_UNSPECIFIED: return "unspecified";
@@ -132,7 +140,7 @@ string CDXLGfxModes::resolutionModesToString() {
 }
   
 UBYTE CDXLGfxModes::getUBYTE() {
-  UBYTE byte=((UBYTE)((UBYTE)(killEHBFlag<<5))|((UBYTE)(colorDepthFlag<<4))|((UBYTE)resolutionModes));
+  UBYTE byte=((UBYTE) ((UBYTE)(frameLengthMode<<6))|((UBYTE)(killEHBFlag<<5))|((UBYTE)(colorDepthFlag<<4))|((UBYTE)resolutionModes) );
   return byte;
 }
 
@@ -174,9 +182,10 @@ void CDXLHeader::readChunk() {
   frequency=readUWORD();
   fps=readUBYTE();
   UBYTE byte2=readUBYTE();
-  modes.resolutionModes=byte2&0b00001111;     // Bits 0-3
-  modes.colorDepthFlag=(byte2&0b00010000)>>4; // Bit 4
-  modes.killEHBFlag=(byte2&0b00100000)>>5;    // Bit 5
+  modes.resolutionModes=byte2&0b00001111;          // Bits 0-3
+  modes.colorDepthFlag=(byte2&0b00010000)>>4;      // Bit 4
+  modes.killEHBFlag=(byte2&0b00100000)>>5;         // Bit 5
+  modes.frameLengthMode=(byte2&0b01000000)>>6;  // Bit 6
   padding=readUWORD();
   setPaddingModes(padding>>12);
   reserved3=readUWORD();
@@ -204,7 +213,8 @@ void CDXLHeader::writeChunk() {
   }
   writeUWORD(frequency);
   writeUBYTE(fps);
-  UBYTE modesWithoutReserved=modes.getUBYTE()&0b00111111; // Includes kill ehb bit 5
+  // Info byte 2
+  UBYTE modesWithoutReserved=modes.getUBYTE()&0b01111111; // Includes bit 5: kill ehb, bit 6: variableLengthMode (0:filed, 1:variable)
   writeUBYTE(modesWithoutReserved);
   UWORD paddingSizes=(UWORD)((getPaddingModes()<<12)+(getColorPaddingBytes()<<8)+(getVideoPaddingBytes()<<4)+getAudioPaddingBytes());
   writeUWORD(paddingSizes);
@@ -235,6 +245,7 @@ string CDXLHeader::toString() {
   ss<<setw(colWidth)<<left<<"Screen resolution mode: "<<modes.resolutionModesToString()<<endl;
   ss<<setw(colWidth)<<left<<"Color depth: "<<modes.colorDepthFlagToString()<<endl;
   ss<<setw(colWidth)<<left<<"KillEHBFlag: "<<modes.killEHBFlagToString()<<endl;
+  ss<<setw(colWidth)<<left<<"Frame length mode: "<<modes.variableLengthModeToString()<<endl;
   ss<<setw(colWidth)<<left<<"[paddingMode]: "<<paddingModesToString()<<endl;
   ss<<setw(colWidth)<<left<<"Padding: "
     <<std::hex<<"0x"  // make base explicit, because std::showbase does not show 0x for zero.
@@ -295,6 +306,20 @@ void CDXLHeader::setKillEHBFlag(bool flag) {
 
 bool CDXLHeader::getKillEHBFlag() {
   return modes.killEHBFlag;
+}
+
+void CDXLHeader::setFrameLengthMode(FrameLengthMode mode) {
+  switch(mode) {
+  case FLM_FIXED:   modes.frameLengthMode=0;
+  case FLM_VARIABLE: modes.frameLengthMode=1;
+  }
+}
+
+FrameLengthMode CDXLHeader::getFrameLengthMode() {
+  if(modes.frameLengthMode==1)
+    return FLM_VARIABLE;
+  else
+    return FLM_FIXED;
 }
 
 void CDXLHeader::setChannelAudioSize(ULONG size) {

@@ -35,7 +35,8 @@ CDXLDecode::CDXLDecode() {
 
 void CDXLDecode::run(Options& options) {
   if(options.hasInFile()) {
-    cout << "Reading cdxl file \"" << options.inFileName << "\"."<<endl;
+    // std::filesystem::path is overloaded for stdout and prints double quoted path name
+    cout << "Reading cdxl file " << options.inFileName << "."<<endl;
     //open file
     long fileSize=Util::fileSize(options.inFileName);
     if(fileSize==-1) {

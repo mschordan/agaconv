@@ -61,6 +61,7 @@ class CDXLEncode : public FileSequenceConversion {
   bool _24BitColors=false;
   UBYTE _fps=0;
   UBYTE _resolutionModes=0;
+  FrameLengthMode _frameLengthMode=FLM_VARIABLE;
   UBYTE _paddingModes=0;
   int _frameLenSum=0;
   ULONG _previousFrameSize=0;

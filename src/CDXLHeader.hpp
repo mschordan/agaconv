@@ -59,13 +59,16 @@ struct CDXLInfo {
 };
 
 struct CDXLGfxModes {
+  std::string resolutionModesToString();
   std::string colorDepthFlagToString();
   std::string killEHBFlagToString();
-  std::string resolutionModesToString();
+  std::string variableLengthModeToString();
   UBYTE getUBYTE();
-  UBYTE reserved:2,killEHBFlag:1,colorDepthFlag:1,resolutionModes:4;
+  UBYTE reserved:1,frameLengthMode:1,killEHBFlag:1,colorDepthFlag:1,resolutionModes:4;
   std::string toString();
 };
+
+enum FrameLengthMode { FLM_FIXED, FLM_VARIABLE };
 
 class CDXLHeader : public CDXLBlock {
  public:
@@ -111,6 +114,8 @@ class CDXLHeader : public CDXLBlock {
   bool getColorBitsFlag();
   void setKillEHBFlag(bool flag);
   bool getKillEHBFlag();
+  void setFrameLengthMode(FrameLengthMode mode);
+  FrameLengthMode getFrameLengthMode();
   void setPaddingModes(UBYTE modes);
   UBYTE getPaddingModes();
   ULONG getPaddingSize();

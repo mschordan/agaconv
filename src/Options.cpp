@@ -377,6 +377,7 @@ void Options::checkAndSetColorMode() {
   }
   this->numPlanes=numPlanes;
   checkAndSetColorDepthBasedOnColorMode();
+  checkAndSetColorDepthBasedOnColorDepthBits(); // overrides 'BasedOnColorMode' if not 0=auto
 }
 
 void Options::checkAndSetFixedPlanes() {
@@ -386,8 +387,7 @@ void Options::checkAndSetFixedPlanes() {
 }
 
 void Options::checkAndAdjustFrequencyFor32BitAlignedAudioChunk() {
-  // Frequency only needs to be adjusted if not 32Bit aligned
-  if(getPaddingMode()==PAD_32BIT||getPaddingMode()==PAD_64BIT)
+  if(!adjustFrequency)
     return;
   uint32_t oldFrequency=frequency;
   uint32_t channelAdj=stereo?2:1;
@@ -418,21 +418,90 @@ bool Options::isStdCdxl() const {
     ;
 }
 
-void Options::checkAndSetOptions() {
-  valueConsistencyChecks();
-  checkAndSetFixedPlanes();
-  checkAndSetPadding();  
-  if(fixedFrames) {
-    fixedPlanesFlag=true;
+void Options::checkAndSetFormat() {
+  if(formatName=="std-opt")
+    format=FMT_STD_OPT;
+  else if(formatName=="std-fixed")
+    format=FMT_STD_FIXED;
+  else if(formatName=="ctm-opt")
+    format=FMT_CTM_OPT;
+  else if(formatName=="unspecified")
+    format=FMT_UNSPECIFIED;
+  else {
+    throw AGAConvException(202,"unknown format specified: "+formatName+".");
   }
+}
+
+void Options::processFormatOptions() {
+  switch(format) {
+  case FMT_CTM_OPT:
+    alignmentString="32bit";
+    fixedFrames=false;
+    fillPaletteToMaxColorsOfPlanes=false;
+    adjustFrequency=false;
+    fixedPlanesFlag=false;
+    adjustHeight=false;
+    break;
+  case FMT_STD_OPT:
+    // default STD CXDL with variable chunk size
+    alignmentString="none";
+    // allows a player to detect 12/24 bit colors without extension and ensure 32-bit alignment for #24bit colors and planes>=2.
+    fillPaletteToMaxColorsOfPlanes=true;
+    adjustFrequency=true; // only needs to be adjust to 32bit, but is currently adjusted for fixed-frame size
+    fixedPlanesFlag=false;
+    // without padding this may be necessary to align for 32bit if width is not a multiple of 4
+    adjustHeight=true;
+    break;
+  case FMT_STD_FIXED:
+    // STD CDXL with fixed frames supported by old players
+    alignmentString="none";
+    fixedFrames=true;
+    fillPaletteToMaxColorsOfPlanes=true;
+    adjustFrequency=true; // adjusted for 32bit alignment and fixed size within 1 sec (i.e. divisible by fps)
+    fixedPlanesFlag=true;
+    adjustHeight=true;
+    break;
+  case FMT_UNSPECIFIED:
+      // do not set any options
+      break;
+  default:
+    throw AGAConvException(203,"undefined CDXL file format: "+to_string(format)+".");
+  }
+}
+
+std::string Options::conversionFlagsToString() {
+  stringstream ss;
+  ss<<"paddingSize: "<<paddingSize
+    <<", fixed frames: "<<fixedFrames
+    <<", fillPaletteToMaxColorsOfPlanes: "<<fillPaletteToMaxColorsOfPlanes
+    <<", adjustFrequency: "<<adjustFrequency
+    <<", fixedPlanesFlag: "<<fixedPlanesFlag
+    <<", fixedPlanesNum: "<<fixedPlanesNum
+    <<", numPlanes: "<<+numPlanes
+    <<endl;
+  return ss.str();
+}
+
+void Options::checkAndSetOptions() {
+  checkAndSetFormat();
+  processFormatOptions();
+  valueConsistencyChecks();
+  
+  checkAndSetPadding();
+
+  // Handle graphics
   checkAndSetColorMode();
+  checkAndSetFixedPlanes(); // requires checkAndSetColorMode
   checkAndSetScreenMode();
+  checkVideoDimensionStride();
+  checkAndSetAdjustAspect();
+
+  // Handle audio
   checkAndSetAudioDataType();
   checkAndSetAudioMode();
-  checkVideoDimensionStride();
-  checkAndAdjustFrequencyFor32BitAlignedAudioChunk(); // if padding is not enabled, frequency is adjusted
-  checkAndSetColorDepthBasedOnColorDepthBits(); // overrides 'BasedOnColorMode' if not 0=auto
-  checkAndSetAdjustAspect();
+  // Only adjusts frequency if flag adjustFrequency is set
+  checkAndAdjustFrequencyFor32BitAlignedAudioChunk();
+
   checkImpossibleCombinations();
 }
 

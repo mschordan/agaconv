@@ -1,13 +1,13 @@
 Error numbers:
 
-Reported errors:   1-209 (with reserved gaps), total 125 (without internal)
-Internal errors: 300-309                     , total 135 (all)
+Reported errors:   1-209 (with reserved gaps), total 127 (without internal)
+Internal errors: 300-311                     , total 139 (all)
 
 agaconv: 1-2
 Commandlineparser+Configuration: 3-39; 190-193, 300, 308
   [reserved]: 194-199
-Options: 40-59, 200-201; 301,303
-  [reserved]: 202-209
+Options: 40-59, 200-203; 301,303
+  [reserved]: 204-209
 FileSequenceConversion: 60-65
   [reserved]: 66-69 
 ExternalToolDriver: 70-79
@@ -20,8 +20,8 @@ CDXLDecode: 110-112
   [reserved 113-119]
 CDXLHeader: 120-121; 304
 CDXLFrame: 122-123, 126
-CDXLPalette: 124-125; 305-307
-  [reserved 126-129]
+CDXLPalette: 124; 305-307
+  [reserved 125-129]
 
 PngLoader: 130-133
   [reserved 134-139]

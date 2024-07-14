@@ -165,10 +165,11 @@ void CDXLFrame::writeChunk() {
 }
 
 string CDXLFrame::toString() {
+  const uint16_t colWidth=24;
   stringstream ss;
-  ss<<"Padding size: "<<getPaddingSize()<<endl;
-  ss<<"Pad bytes: ";
-  ss<<computePaddingBytes(getPaddingSize(),palette.getLength());
+  ss<<setw(colWidth)<<left<<"Padding size: "<<getPaddingSize()<<endl;
+  ss<<setw(colWidth)<<left<<"Pad bytes: "
+    <<computePaddingBytes(getPaddingSize(),palette.getLength());
   ss<<endl;
   return header.toString()+ss.str();
 }

@@ -48,7 +48,7 @@ void ExternalToolDriver::runFFMPEGAudioExtraction(const Options& options) {
               <<" "<<audioFileName
     ;
   // Extract audio data from input video file
-  runFFMPEG(options, audioCommand.str(), "ffmpeg (extracting audio data)");
+  runFFMPEG(options, audioCommand.str(), "ffmpeg (extracting audio data with frequency "+std::to_string(options.frequency)+")");
   if(options.verbose>=2) {
     cout<<"Extracted audio file "<<audioFileName<<" (sound mode:"<<options.audioModeToString()<<")"<<endl;
   }

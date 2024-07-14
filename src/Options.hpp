@@ -66,7 +66,9 @@ struct Options {
   uint32_t height=autoValue;
   double yScaleFactor=1.0;
   uint8_t numPlanes=0; // Internal, set by colorMode
-
+  std::string formatName="std-opt"; // default
+  enum FORMAT { FMT_UNSPECIFIED, FMT_CTM_OPT, FMT_STD_OPT, FMT_STD_FIXED };
+  FORMAT format=FMT_UNSPECIFIED; 
   std::string ditherMode="floyd_steinberg"; // floyd_steinberg|bayer:bayer_scale=2
   
   uint32_t ffDitherBayerScale=3;
@@ -142,6 +144,7 @@ struct Options {
   enum PADDING_MODE { PAD_UNSPECIFIED=0, PAD_16BIT=2, PAD_32BIT=3, PAD_64BIT=4 };
   uint32_t paddingSize=autoValue;
   std::string alignmentString="auto";
+  std::string conversionFlagsToString();
   Options::PADDING_MODE getPaddingMode() const;
   std::string paddingModeToString(Options::PADDING_MODE) const;
   uint32_t getPaddingSize() const;
@@ -150,14 +153,28 @@ struct Options {
   bool debug=false;
   // Eliminates empty bitplanes, remaps colors. Must also be on for fixedPlanesFlag (which are filled after all empty ones are removed)
   bool optimizePngPalette=true;
+
+  // Control flags for CDXL type (STD, STD+ or CTM)
+  /* fixedFrames optimize Mode
+   *    true      false   STD  --fixed-frames (uses 12/24 bit colors, --force-color-depth=12 for AGA 12-bit colors)
+   *    true      true    not possible
+   *    false     false   STD+ default mode (uses 12/24 bit colors, --force-color-depth=12 for AGA 12-bit colors)
+   *    false     true    CTM  --optimize
+   */
   bool fixedFrames=false;
+  bool optimize=false;
+ 
+
+  bool fillPaletteToMaxColorsOfPlanes=true;
+  bool adjustFrequency=false;
   bool fixedPlanesFlag=false;
+  bool adjustHeight=false;
+
   uint32_t reservedColorsNum=0;
   // If different to 0, then fixed number of planes is requested. Controlled by fixedPlanesFlag flag.
   uint32_t fixedPlanesNum=0;
   uint32_t maxColors() const;
   uint32_t maxColorsCorrected() const;
-  static const bool fillPaletteToMaxColorsOfPlanes=true;
   std::string audioModeToString() const;
   std::string ffmpegFrameNameSuffix() const;
   // Returns 000..0 for the number of frame zero digits
@@ -176,6 +193,8 @@ struct Options {
   bool isStdCdxl() const;
 private:
   void valueConsistencyChecks();
+  void checkAndSetFormat();
+  void processFormatOptions();
   void checkAndSetScreenMode();
   void checkAndSetAudioMode();
   void checkAndSetAudioDataType();
